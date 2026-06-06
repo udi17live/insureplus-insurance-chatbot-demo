@@ -1,4 +1,16 @@
 services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: deps
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+
   backend:
     volumes:
       - ./backend/app:/app/app

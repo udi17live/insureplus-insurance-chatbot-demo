@@ -8,6 +8,16 @@ services:
       timeout: 5s
       retries: 5
 
+  frontend:
+    image: ${ACR_LOGIN_SERVER}/insureplus-frontend:${IMAGE_TAG:-latest}
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: ${API_URL}
+    depends_on:
+      - backend
+
   backend:
     image: ${ACR_LOGIN_SERVER}/insureplus-backend:${IMAGE_TAG:-latest}
     restart: always

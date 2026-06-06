@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     stripe_secret_key: str
     stripe_webhook_secret: str
 
+    # Redis
+    redis_url: str = "redis://localhost:6379"
+
     # Azure Communication Services
     acs_connection_string: str = ""
     acs_sender_address: str = ""

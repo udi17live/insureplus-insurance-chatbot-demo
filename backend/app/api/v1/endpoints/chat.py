@@ -1,7 +1,8 @@
 import uuid
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from app.core.deps import CurrentUser, OptionalUser, DBSession
+from app.core.limiter import limiter
 from app.schemas.chat import ChatMessageRequest, ThreadOut
 from app.services.chat import ChatService
 
@@ -9,7 +10,9 @@ router = APIRouter()
 
 
 @router.post("/message")
+@limiter.limit("20/minute")
 async def send_message(
+    request: Request,
     body: ChatMessageRequest,
     current_user: OptionalUser,
     db: DBSession,

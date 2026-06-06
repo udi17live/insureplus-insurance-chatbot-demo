@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Send } from "lucide-react"
+import { Send, SquarePen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Header } from "@/components/header"
@@ -15,6 +15,22 @@ interface Message {
   content: string
 }
 
+const STORAGE_KEY = "insureplus_chat"
+
+function loadSession(): { messages: Message[]; threadId: string | null } {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {}
+  return { messages: [], threadId: null }
+}
+
+function saveSession(messages: Message[], threadId: string | null) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ messages, threadId }))
+  } catch {}
+}
+
 export default function Page() {
   const [messages, setMessages] = React.useState<Message[]>([])
   const [input, setInput] = React.useState("")
@@ -23,6 +39,20 @@ export default function Page() {
   const [authOpen, setAuthOpen] = React.useState(false)
   const bottomRef = React.useRef<HTMLDivElement>(null)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
+  const initialized = React.useRef(false)
+
+  React.useEffect(() => {
+    if (initialized.current) return
+    initialized.current = true
+    const session = loadSession()
+    setMessages(session.messages)
+    setThreadId(session.threadId)
+  }, [])
+
+  React.useEffect(() => {
+    if (!initialized.current) return
+    saveSession(messages, threadId)
+  }, [messages, threadId])
 
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -33,6 +63,14 @@ export default function Page() {
     if (!el) return
     el.style.height = "auto"
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+  }
+
+  function startNewChat() {
+    setMessages([])
+    setThreadId(null)
+    setInput("")
+    if (textareaRef.current) textareaRef.current.style.height = "auto"
+    localStorage.removeItem(STORAGE_KEY)
   }
 
   async function sendMessage() {
@@ -72,7 +110,7 @@ export default function Page() {
 
   return (
     <div className="flex h-svh flex-col">
-      <Header onLoginClick={() => setAuthOpen(true)} />
+      <Header onLoginClick={() => setAuthOpen(true)} onNewChat={messages.length > 0 ? startNewChat : undefined} />
       <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
       <main className="mx-auto flex w-full max-w-225 flex-1 flex-col overflow-hidden px-4">
         <ScrollArea className="flex-1 py-6">

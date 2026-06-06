@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import datetime, timezone
 from typing import AsyncIterator
@@ -7,6 +8,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.azure_ai import make_project_client
 from app.core.config import settings
 from app.repository.chat_thread import ChatThreadRepository
+
+_CITATION_RE = re.compile(r"【[^】]*】")
+
+
+def _strip_citations(text: str) -> str:
+    return _CITATION_RE.sub("", text)
 
 
 class ChatService:
@@ -48,7 +55,9 @@ class ChatService:
                 last_response_id = None
                 async for event in stream:
                     if event.type == "response.output_text.delta":
-                        yield f"data: {event.delta}\n\n"
+                        delta = _strip_citations(event.delta)
+                        if delta:
+                            yield f"data: {delta}\n\n"
                     elif event.type == "response.completed":
                         last_response_id = event.response.id
 

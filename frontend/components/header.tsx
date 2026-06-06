@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useTheme } from "next-themes"
-import { Sun, Moon, LogIn, LogOut, Loader2 } from "lucide-react"
+import { Sun, Moon, LogIn, LogOut, Loader2, SquarePen } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -32,9 +32,10 @@ function ThemeToggle() {
 
 interface HeaderProps {
   onLoginClick?: () => void
+  onNewChat?: () => void
 }
 
-export function Header({ onLoginClick }: HeaderProps) {
+export function Header({ onLoginClick, onNewChat }: HeaderProps) {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -52,8 +53,20 @@ export function Header({ onLoginClick }: HeaderProps) {
   return (
     <header className="border-b">
       <div className="mx-auto grid h-14 max-w-225 grid-cols-3 items-center px-4">
-        <div className="flex items-center">
+        <div className="flex items-center gap-1">
           <ThemeToggle />
+          {onNewChat && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onNewChat}
+              aria-label="New chat"
+              className="gap-1.5"
+            >
+              <SquarePen className="h-4 w-4" />
+              New chat
+            </Button>
+          )}
         </div>
         <div className="flex justify-center">
           <span className="font-heading font-bold tracking-widest uppercase">
@@ -74,7 +87,9 @@ export function Header({ onLoginClick }: HeaderProps) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <div className="px-2 py-1.5 text-sm">
-                  {user.full_name && <p className="font-medium">{user.full_name}</p>}
+                  {user.full_name && (
+                    <p className="font-medium">{user.full_name}</p>
+                  )}
                   <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
                 <DropdownMenuSeparator />

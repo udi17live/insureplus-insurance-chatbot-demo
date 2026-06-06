@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Header } from "@/components/header"
 import { AuthDialog } from "@/components/auth-dialog"
+import { streamChat } from "@/lib/chat"
 import { cn } from "@/lib/utils"
 
 interface Message {
@@ -18,7 +19,7 @@ export default function Page() {
   const [messages, setMessages] = React.useState<Message[]>([])
   const [input, setInput] = React.useState("")
   const [streaming, setStreaming] = React.useState(false)
-  const [threadId] = React.useState<string | null>(null)
+  const [threadId, setThreadId] = React.useState<string | null>(null)
   const [authOpen, setAuthOpen] = React.useState(false)
   const bottomRef = React.useRef<HTMLDivElement>(null)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
@@ -48,33 +49,15 @@ export default function Page() {
     setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: "" }])
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/v1/chat/message`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ message: text, thread_id: threadId }),
-      })
-
-      const reader = res.body?.getReader()
-      const decoder = new TextDecoder()
-      if (!reader) return
-
-      let buffer = ""
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split("\n")
-        buffer = lines.pop() ?? ""
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue
-          const data = line.slice(6)
-          if (data === "[DONE]") break
+      await streamChat({
+        message: text,
+        threadId,
+        onThread: (id) => setThreadId(id),
+        onToken: (token) =>
           setMessages((prev) =>
-            prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + data } : m))
-          )
-        }
-      }
+            prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + token } : m))
+          ),
+      })
     } finally {
       setStreaming(false)
     }

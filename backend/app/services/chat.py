@@ -4,7 +4,7 @@ from typing import AsyncIterator
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.azure_ai import get_ai_client
+from app.core.azure_ai import make_project_client
 from app.core.config import settings
 from app.repository.chat_thread import ChatThreadRepository
 
@@ -13,91 +13,63 @@ class ChatService:
     def __init__(self, db: AsyncSession) -> None:
         self.thread_repo = ChatThreadRepository(db)
 
-    async def _get_or_create_thread(
-        self,
-        thread_id: uuid.UUID | None,
-        user_id: uuid.UUID | None,
-    ):
-        if thread_id:
-            thread = await self.thread_repo.get_by_id(thread_id)
-            if thread and (thread.user_id is None or thread.user_id == user_id):
-                return thread
-
-        async with get_ai_client() as client:
-            foundry_thread = await client.agents.threads.create()
-
-        return await self.thread_repo.create(
-            user_id=user_id,
-            foundry_thread_id=foundry_thread.id,
-            last_message_at=datetime.now(timezone.utc),
-        )
-
     async def stream_response(
         self,
         message: str,
         thread_id: uuid.UUID | None,
         user_id: uuid.UUID | None,
     ) -> AsyncIterator[str]:
-        thread = await self._get_or_create_thread(thread_id, user_id)
+        thread = None
+        previous_response_id = None
 
-        async with get_ai_client() as client:
-            await client.agents.messages.create(
-                thread_id=thread.foundry_thread_id,
-                role="user",
-                content=message,
+        if thread_id:
+            thread = await self.thread_repo.get_by_id(thread_id)
+            if thread and (thread.user_id is None or thread.user_id == user_id):
+                previous_response_id = thread.foundry_thread_id
+            else:
+                thread = None
+
+        async with make_project_client() as project_client:
+            openai_client = project_client.get_openai_client(
+                agent_name=settings.primary_agent_id
             )
 
-            total_tokens = 0
+            extra: dict = {
+                "max_output_tokens": settings.agent_max_completion_tokens,
+            }
+            if previous_response_id:
+                extra["previous_response_id"] = previous_response_id
 
-            async with client.agents.runs.stream(
-                thread_id=thread.foundry_thread_id,
-                agent_id=settings.primary_agent_id,
-                max_prompt_tokens=settings.agent_max_prompt_tokens,
-                max_completion_tokens=settings.agent_max_completion_tokens,
+            async with openai_client.responses.stream(
+                model=settings.primary_agent_model,
+                input=message,
+                extra_body=extra,
             ) as stream:
-                async for event_type, event_data, _ in stream:
-                    if event_type == "thread.message.delta":
-                        for block in event_data.delta.content or []:
-                            if hasattr(block, "text") and block.text:
-                                yield f"data: {block.text.value}\n\n"
+                last_response_id = None
+                async for event in stream:
+                    if event.type == "response.output_text.delta":
+                        yield f"data: {event.delta}\n\n"
+                    elif event.type == "response.completed":
+                        last_response_id = event.response.id
 
-                    elif event_type == "thread.run.completed":
-                        usage = getattr(event_data, "usage", None)
-                        if usage:
-                            total_tokens = usage.total_tokens
+        if last_response_id:
+            now = datetime.now(timezone.utc)
+            if thread:
+                thread = await self.thread_repo.update(
+                    thread,
+                    foundry_thread_id=last_response_id,
+                    last_message_at=now,
+                )
+            else:
+                thread = await self.thread_repo.create(
+                    user_id=user_id,
+                    foundry_thread_id=last_response_id,
+                    last_message_at=now,
+                )
 
-        await self.thread_repo.update(
-            thread,
-            last_message_at=datetime.now(timezone.utc),
-            total_tokens_used=thread.total_tokens_used + total_tokens,
-        )
+            yield f"event: thread\ndata: {thread.id}\n\n"
 
         yield "data: [DONE]\n\n"
 
     async def list_threads(self, user_id: uuid.UUID) -> list:
         return await self.thread_repo.get_all_by_user(user_id)
-
-    async def get_thread_messages(self, thread_id: uuid.UUID, user_id: uuid.UUID) -> list:
-        thread = await self.thread_repo.get_by_id(thread_id)
-        if not thread or thread.user_id != user_id:
-            return []
-
-        async with get_ai_client() as client:
-            messages_page = await client.agents.messages.list(
-                thread_id=thread.foundry_thread_id,
-                order="asc",
-            )
-
-        result = []
-        async for msg in messages_page:
-            content = ""
-            for block in msg.content or []:
-                if hasattr(block, "text") and block.text:
-                    content += block.text.value
-            result.append({
-                "id": msg.id,
-                "role": msg.role,
-                "content": content,
-                "created_at": msg.created_at,
-            })
-        return result

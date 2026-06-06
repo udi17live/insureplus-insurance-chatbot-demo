@@ -1,7 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import { useTheme } from "next-themes"
-import { Sun, Moon, LogIn, LogOut, Settings, User } from "lucide-react"
+import { Sun, Moon, LogIn, LogOut, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -36,10 +37,16 @@ interface HeaderProps {
 export function Header({ onLoginClick }: HeaderProps) {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   async function handleLogout() {
-    await logoutAction()
-    logout()
+    setLoggingOut(true)
+    try {
+      await logoutAction()
+      logout()
+    } finally {
+      setLoggingOut(false)
+    }
   }
 
   return (
@@ -71,18 +78,17 @@ export function Header({ onLoginClick }: HeaderProps) {
                   <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sign out
+                <DropdownMenuItem
+                  className="text-destructive"
+                  disabled={loggingOut}
+                  onClick={handleLogout}
+                >
+                  {loggingOut ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <LogOut className="mr-2 h-4 w-4" />
+                  )}
+                  {loggingOut ? "Signing out…" : "Sign out"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

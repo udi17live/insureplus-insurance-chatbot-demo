@@ -26,8 +26,9 @@ class Settings(BaseSettings):
     database_url: str  # postgresql+asyncpg://user:pass@host:5432/db
 
     # Azure AI Foundry
-    azure_ai_project_connection_string: str
-    primary_agent_id: str
+    azure_ai_project_base_endpoint: str   # project base URL for AIProjectClient
+    primary_agent_id: str                 # agent name, e.g. "insureplus-rg-main"
+    primary_agent_model: str = "gpt-5.4-mini"  # must match the model deployed on the agent
 
     # Stripe
     stripe_secret_key: str

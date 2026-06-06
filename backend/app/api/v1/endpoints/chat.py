@@ -1,4 +1,3 @@
-import uuid
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from app.core.deps import CurrentUser, OptionalUser, DBSession
@@ -38,10 +37,3 @@ async def list_threads(current_user: CurrentUser, db: DBSession):
     return await ChatService(db).list_threads(current_user.id)
 
 
-@router.get("/threads/{thread_id}/messages")
-async def get_thread_messages(
-    thread_id: uuid.UUID,
-    current_user: CurrentUser,
-    db: DBSession,
-):
-    return await ChatService(db).get_thread_messages(thread_id, current_user.id)

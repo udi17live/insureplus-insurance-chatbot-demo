@@ -1,7 +1,7 @@
 "use server"
 
 import { cookies } from "next/headers"
-import api from "@/lib/api"
+import { serverApi } from "@/lib/api"
 
 interface UserOut {
   id: string
@@ -15,9 +15,10 @@ interface AuthResponse {
   user: UserOut
 }
 
-function setAuthCookie(token: string) {
+async function setAuthCookie(token: string) {
   const isProd = process.env.NODE_ENV === "production"
-  cookies().set("access_token", token, {
+  const jar = await cookies()
+  jar.set("access_token", token, {
     httpOnly: true,
     secure: isProd,
     sameSite: "lax",
@@ -27,8 +28,8 @@ function setAuthCookie(token: string) {
 }
 
 export async function loginAction(email: string, password: string): Promise<UserOut> {
-  const { data } = await api.post<AuthResponse>("/auth/login", { email, password })
-  setAuthCookie(data.access_token)
+  const { data } = await serverApi.post<AuthResponse>("/auth/login", { email, password })
+  await setAuthCookie(data.access_token)
   return data.user
 }
 
@@ -37,15 +38,16 @@ export async function registerAction(
   password: string,
   full_name: string
 ): Promise<UserOut> {
-  const { data } = await api.post<AuthResponse>("/auth/register", {
+  const { data } = await serverApi.post<AuthResponse>("/auth/register", {
     email,
     password,
     full_name,
   })
-  setAuthCookie(data.access_token)
+  await setAuthCookie(data.access_token)
   return data.user
 }
 
 export async function logoutAction(): Promise<void> {
-  cookies().delete("access_token")
+  const jar = await cookies()
+  jar.delete("access_token")
 }

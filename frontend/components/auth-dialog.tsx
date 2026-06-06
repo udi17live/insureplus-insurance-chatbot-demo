@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
+import { Loader2 } from "lucide-react"
 import { loginAction, registerAction } from "@/lib/auth-actions"
 import { useAuthStore } from "@/lib/auth-store"
 
@@ -98,6 +99,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               </div>
               {error && <p className="text-destructive text-sm">{error}</p>}
               <Button type="submit" disabled={loading} className="w-full">
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {loading ? "Signing in…" : "Sign in"}
               </Button>
             </form>
@@ -123,6 +125,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
               </div>
               {error && <p className="text-destructive text-sm">{error}</p>}
               <Button type="submit" disabled={loading} className="w-full">
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {loading ? "Creating account…" : "Create account"}
               </Button>
             </form>

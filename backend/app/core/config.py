@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import PostgresDsn, computed_field
+from pydantic import PostgresDsn, computed_field, field_validator
 from functools import lru_cache
+import json
 
 
 class Settings(BaseSettings):
@@ -16,6 +17,14 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = False
     allowed_origins: list[str] = ["http://localhost:3000"]
+
+    @field_validator("allowed_origins", mode="before")
+    @classmethod
+    def parse_allowed_origins(cls, v: object) -> object:
+        if isinstance(v, str):
+            v = v.strip().strip("'\"")
+            return json.loads(v) if v.startswith("[") else [o.strip() for o in v.split(",") if o.strip()]
+        return v
 
     # JWT
     jwt_secret_key: str

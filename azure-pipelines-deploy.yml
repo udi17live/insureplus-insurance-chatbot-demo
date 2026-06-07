@@ -92,7 +92,10 @@ stages:
                         az containerapp update \
                           --name insure-plus-frontend \
                           --resource-group $(resourceGroup) \
-                          --image $(acrServer)/frontend:${{ parameters.imageTag }}
+                          --image $(acrServer)/frontend:${{ parameters.imageTag }} \
+                          --set-env-vars \
+                            NEXT_PUBLIC_API_URL="$(NEXT_PUBLIC_API_URL)" \
+                            BACKEND_URL="$(BACKEND_URL)"
                       else
                         az containerapp create \
                           --name insure-plus-frontend \
@@ -106,5 +109,6 @@ stages:
                           --ingress external \
                           --min-replicas 1 \
                           --env-vars \
-                            NEXT_PUBLIC_API_URL="$(NEXT_PUBLIC_API_URL)"
+                            NEXT_PUBLIC_API_URL="$(NEXT_PUBLIC_API_URL)" \
+                            BACKEND_URL="$(BACKEND_URL)"
                       fi

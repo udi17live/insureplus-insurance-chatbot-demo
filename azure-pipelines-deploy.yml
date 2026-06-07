@@ -2,7 +2,7 @@ trigger: none
 
 parameters:
   - name: imageTag
-    displayName: Image tag to deploy
+    displayName: Image tag to deploy (use Build ID from build pipeline, e.g. 123)
     type: string
     default: latest
 
@@ -35,11 +35,29 @@ stages:
                     scriptType: bash
                     scriptLocation: inlineScript
                     inlineScript: |
+                      ACR_USER=$(az acr credential show --name insureplusacr --query username -o tsv)
+                      ACR_PASS=$(az acr credential show --name insureplusacr --query passwords[0].value -o tsv)
+                      ENV_VARS="APP_NAME=Insure Plus API \
+                        DEBUG=false \
+                        DATABASE_URL=$(DATABASE_URL) \
+                        REDIS_URL=$(REDIS_URL) \
+                        JWT_SECRET_KEY=$(JWT_SECRET_KEY) \
+                        JWT_ALGORITHM=HS256 \
+                        JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60 \
+                        AZURE_TENANT_ID=$(AZURE_TENANT_ID) \
+                        AZURE_CLIENT_ID=$(AZURE_CLIENT_ID) \
+                        AZURE_CLIENT_SECRET=$(AZURE_CLIENT_SECRET) \
+                        AZURE_AI_PROJECT_BASE_ENDPOINT=$(AZURE_AI_PROJECT_BASE_ENDPOINT) \
+                        PRIMARY_AGENT_ID=$(PRIMARY_AGENT_ID) \
+                        AGENT_API_KEY=$(AGENT_API_KEY) \
+                        AGENT_MAX_COMPLETION_TOKENS=600 \
+                        ALLOWED_ORIGINS=$(ALLOWED_ORIGINS)"
                       if az containerapp show --name insure-plus-backend --resource-group $(resourceGroup) &>/dev/null; then
                         az containerapp update \
                           --name insure-plus-backend \
                           --resource-group $(resourceGroup) \
-                          --image $(acrServer)/backend:${{ parameters.imageTag }}
+                          --image $(acrServer)/backend:${{ parameters.imageTag }} \
+                          --set-env-vars $ENV_VARS
                       else
                         az containerapp create \
                           --name insure-plus-backend \
@@ -47,28 +65,13 @@ stages:
                           --environment $(containerAppsEnv) \
                           --image $(acrServer)/backend:${{ parameters.imageTag }} \
                           --registry-server $(acrServer) \
-                          --registry-username $(az acr credential show --name insureplusacr --query username -o tsv) \
-                          --registry-password $(az acr credential show --name insureplusacr --query passwords[0].value -o tsv) \
+                          --registry-username $ACR_USER \
+                          --registry-password $ACR_PASS \
                           --target-port 8000 \
                           --ingress external \
                           --min-replicas 1 \
                           --max-replicas 3 \
-                          --env-vars \
-                            APP_NAME="Insure Plus API" \
-                            DEBUG=false \
-                            DATABASE_URL="$(DATABASE_URL)" \
-                            REDIS_URL="$(REDIS_URL)" \
-                            JWT_SECRET_KEY="$(JWT_SECRET_KEY)" \
-                            JWT_ALGORITHM=HS256 \
-                            JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60 \
-                            AZURE_TENANT_ID="$(AZURE_TENANT_ID)" \
-                            AZURE_CLIENT_ID="$(AZURE_CLIENT_ID)" \
-                            AZURE_CLIENT_SECRET="$(AZURE_CLIENT_SECRET)" \
-                            AZURE_AI_PROJECT_BASE_ENDPOINT="$(AZURE_AI_PROJECT_BASE_ENDPOINT)" \
-                            PRIMARY_AGENT_ID="$(PRIMARY_AGENT_ID)" \
-                            AGENT_API_KEY="$(AGENT_API_KEY)" \
-                            AGENT_MAX_COMPLETION_TOKENS=600 \
-                            ALLOWED_ORIGINS=$(ALLOWED_ORIGINS)
+                          --env-vars $ENV_VARS
                       fi
 
       - deployment: DeployFrontend
@@ -88,14 +91,15 @@ stages:
                     scriptType: bash
                     scriptLocation: inlineScript
                     inlineScript: |
+                      ACR_USER=$(az acr credential show --name insureplusacr --query username -o tsv)
+                      ACR_PASS=$(az acr credential show --name insureplusacr --query passwords[0].value -o tsv)
+                      ENV_VARS="NEXT_PUBLIC_API_URL=$(NEXT_PUBLIC_API_URL) BACKEND_URL=$(BACKEND_URL)"
                       if az containerapp show --name insure-plus-frontend --resource-group $(resourceGroup) &>/dev/null; then
                         az containerapp update \
                           --name insure-plus-frontend \
                           --resource-group $(resourceGroup) \
                           --image $(acrServer)/frontend:${{ parameters.imageTag }} \
-                          --set-env-vars \
-                            NEXT_PUBLIC_API_URL="$(NEXT_PUBLIC_API_URL)" \
-                            BACKEND_URL="$(BACKEND_URL)"
+                          --set-env-vars $ENV_VARS
                       else
                         az containerapp create \
                           --name insure-plus-frontend \
@@ -103,12 +107,10 @@ stages:
                           --environment $(containerAppsEnv) \
                           --image $(acrServer)/frontend:${{ parameters.imageTag }} \
                           --registry-server $(acrServer) \
-                          --registry-username $(az acr credential show --name insureplusacr --query username -o tsv) \
-                          --registry-password $(az acr credential show --name insureplusacr --query passwords[0].value -o tsv) \
+                          --registry-username $ACR_USER \
+                          --registry-password $ACR_PASS \
                           --target-port 3000 \
                           --ingress external \
                           --min-replicas 1 \
-                          --env-vars \
-                            NEXT_PUBLIC_API_URL="$(NEXT_PUBLIC_API_URL)" \
-                            BACKEND_URL="$(BACKEND_URL)"
+                          --env-vars $ENV_VARS
                       fi

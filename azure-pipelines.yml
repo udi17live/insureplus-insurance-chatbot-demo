@@ -10,7 +10,7 @@ variables:
   - name: acrServer
     value: insureplusacr.azurecr.io
   - name: resourceGroup
-    value: insure-plus-rg
+    value: insureplus-rg
   - name: containerAppsEnv
     value: insure-plus-env
   - name: imageTag

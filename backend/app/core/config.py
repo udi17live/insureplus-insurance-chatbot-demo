@@ -28,18 +28,9 @@ class Settings(BaseSettings):
     # Azure AI Foundry
     azure_ai_project_base_endpoint: str   # project base URL for AIProjectClient
     primary_agent_id: str                 # agent name, e.g. "insureplus-rg-main"
-    primary_agent_model: str = "gpt-5.4-mini"  # must match the model deployed on the agent
-
-    # Stripe
-    stripe_secret_key: str
-    stripe_webhook_secret: str
 
     # Redis
     redis_url: str = "redis://localhost:6379"
-
-    # Azure Communication Services
-    acs_connection_string: str = ""
-    acs_sender_address: str = ""
 
     # Agent response limit
     agent_max_completion_tokens: int = 600

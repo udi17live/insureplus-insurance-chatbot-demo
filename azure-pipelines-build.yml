@@ -44,3 +44,27 @@ stages:
               tags: |
                 $(imageTag)
                 latest
+
+  - stage: Deploy
+    displayName: Trigger Deploy Pipeline
+    dependsOn: Build
+    condition: succeeded()
+    jobs:
+      - job: TriggerDeploy
+        displayName: Trigger Deploy with build ID
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: AzureCLI@2
+            displayName: Trigger Deploy pipeline
+            inputs:
+              azureSubscription: insure-plus-azure-connection
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: |
+                az pipelines run \
+                  --name "Deploy" \
+                  --branch release \
+                  --parameters imageTag=$(Build.BuildId) \
+                  --org "$(System.TeamFoundationCollectionUri)" \
+                  --project "$(System.TeamProject)"

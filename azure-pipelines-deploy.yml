@@ -37,21 +37,6 @@ stages:
                     inlineScript: |
                       ACR_USER=$(az acr credential show --name insureplusacr --query username -o tsv)
                       ACR_PASS=$(az acr credential show --name insureplusacr --query passwords[0].value -o tsv)
-                      ENV_VARS="APP_NAME=Insure Plus API \
-                        DEBUG=false \
-                        DATABASE_URL=$(DATABASE_URL) \
-                        REDIS_URL=$(REDIS_URL) \
-                        JWT_SECRET_KEY=$(JWT_SECRET_KEY) \
-                        JWT_ALGORITHM=HS256 \
-                        JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60 \
-                        AZURE_TENANT_ID=$(AZURE_TENANT_ID) \
-                        AZURE_CLIENT_ID=$(AZURE_CLIENT_ID) \
-                        AZURE_CLIENT_SECRET=$(AZURE_CLIENT_SECRET) \
-                        AZURE_AI_PROJECT_BASE_ENDPOINT=$(AZURE_AI_PROJECT_BASE_ENDPOINT) \
-                        PRIMARY_AGENT_ID=$(PRIMARY_AGENT_ID) \
-                        AGENT_API_KEY=$(AGENT_API_KEY) \
-                        AGENT_MAX_COMPLETION_TOKENS=600 \
-                        ALLOWED_ORIGINS=$(ALLOWED_ORIGINS)"
                       REVISION_SUFFIX=$(date -u +%Y%m%d%H%M%S)
                       if az containerapp show --name insure-plus-backend --resource-group $(resourceGroup) &>/dev/null; then
                         az containerapp update \
@@ -59,7 +44,22 @@ stages:
                           --resource-group $(resourceGroup) \
                           --image $(acrServer)/backend:${{ parameters.imageTag }} \
                           --revision-suffix $REVISION_SUFFIX \
-                          --set-env-vars $ENV_VARS
+                          --set-env-vars \
+                            "APP_NAME=Insure Plus API" \
+                            "DEBUG=false" \
+                            "DATABASE_URL=$(DATABASE_URL)" \
+                            "REDIS_URL=$(REDIS_URL)" \
+                            "JWT_SECRET_KEY=$(JWT_SECRET_KEY)" \
+                            "JWT_ALGORITHM=HS256" \
+                            "JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60" \
+                            "AZURE_TENANT_ID=$(AZURE_TENANT_ID)" \
+                            "AZURE_CLIENT_ID=$(AZURE_CLIENT_ID)" \
+                            "AZURE_CLIENT_SECRET=$(AZURE_CLIENT_SECRET)" \
+                            "AZURE_AI_PROJECT_BASE_ENDPOINT=$(AZURE_AI_PROJECT_BASE_ENDPOINT)" \
+                            "PRIMARY_AGENT_ID=$(PRIMARY_AGENT_ID)" \
+                            "AGENT_API_KEY=$(AGENT_API_KEY)" \
+                            "AGENT_MAX_COMPLETION_TOKENS=600" \
+                            "ALLOWED_ORIGINS=$(ALLOWED_ORIGINS)"
                       else
                         az containerapp create \
                           --name insure-plus-backend \
@@ -73,7 +73,22 @@ stages:
                           --ingress external \
                           --min-replicas 1 \
                           --max-replicas 3 \
-                          --env-vars $ENV_VARS
+                          --env-vars \
+                            "APP_NAME=Insure Plus API" \
+                            "DEBUG=false" \
+                            "DATABASE_URL=$(DATABASE_URL)" \
+                            "REDIS_URL=$(REDIS_URL)" \
+                            "JWT_SECRET_KEY=$(JWT_SECRET_KEY)" \
+                            "JWT_ALGORITHM=HS256" \
+                            "JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60" \
+                            "AZURE_TENANT_ID=$(AZURE_TENANT_ID)" \
+                            "AZURE_CLIENT_ID=$(AZURE_CLIENT_ID)" \
+                            "AZURE_CLIENT_SECRET=$(AZURE_CLIENT_SECRET)" \
+                            "AZURE_AI_PROJECT_BASE_ENDPOINT=$(AZURE_AI_PROJECT_BASE_ENDPOINT)" \
+                            "PRIMARY_AGENT_ID=$(PRIMARY_AGENT_ID)" \
+                            "AGENT_API_KEY=$(AGENT_API_KEY)" \
+                            "AGENT_MAX_COMPLETION_TOKENS=600" \
+                            "ALLOWED_ORIGINS=$(ALLOWED_ORIGINS)"
                       fi
 
       - deployment: DeployFrontend

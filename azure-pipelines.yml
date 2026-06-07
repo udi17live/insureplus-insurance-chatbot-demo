@@ -4,11 +4,17 @@ trigger:
       - release
 
 variables:
-  acrName: insureplusacr
-  acrServer: insureplusacr.azurecr.io
-  resourceGroup: insure-plus-rg
-  containerAppsEnv: insure-plus-env
-  imageTag: $(Build.BuildId)
+  - group: insure-plus-prod-vars
+  - name: acrName
+    value: insureplusacr
+  - name: acrServer
+    value: insureplusacr.azurecr.io
+  - name: resourceGroup
+    value: insure-plus-rg
+  - name: containerAppsEnv
+    value: insure-plus-env
+  - name: imageTag
+    value: $(Build.BuildId)
 
 stages:
   - stage: Build

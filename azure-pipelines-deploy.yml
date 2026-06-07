@@ -47,6 +47,8 @@ stages:
                           --environment $(containerAppsEnv) \
                           --image $(acrServer)/backend:${{ parameters.imageTag }} \
                           --registry-server $(acrServer) \
+                          --registry-username $(az acr credential show --name insureplusacr --query username -o tsv) \
+                          --registry-password $(az acr credential show --name insureplusacr --query passwords[0].value -o tsv) \
                           --target-port 8000 \
                           --ingress external \
                           --min-replicas 1 \
@@ -98,6 +100,8 @@ stages:
                           --environment $(containerAppsEnv) \
                           --image $(acrServer)/frontend:${{ parameters.imageTag }} \
                           --registry-server $(acrServer) \
+                          --registry-username $(az acr credential show --name insureplusacr --query username -o tsv) \
+                          --registry-password $(az acr credential show --name insureplusacr --query passwords[0].value -o tsv) \
                           --target-port 3000 \
                           --ingress external \
                           --min-replicas 1 \

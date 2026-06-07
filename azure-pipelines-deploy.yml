@@ -52,11 +52,13 @@ stages:
                         AGENT_API_KEY=$(AGENT_API_KEY) \
                         AGENT_MAX_COMPLETION_TOKENS=600 \
                         ALLOWED_ORIGINS=$(ALLOWED_ORIGINS)"
+                      REVISION_SUFFIX=$(date -u +%Y%m%d%H%M%S)
                       if az containerapp show --name insure-plus-backend --resource-group $(resourceGroup) &>/dev/null; then
                         az containerapp update \
                           --name insure-plus-backend \
                           --resource-group $(resourceGroup) \
                           --image $(acrServer)/backend:${{ parameters.imageTag }} \
+                          --revision-suffix $REVISION_SUFFIX \
                           --set-env-vars $ENV_VARS
                       else
                         az containerapp create \
@@ -94,11 +96,13 @@ stages:
                       ACR_USER=$(az acr credential show --name insureplusacr --query username -o tsv)
                       ACR_PASS=$(az acr credential show --name insureplusacr --query passwords[0].value -o tsv)
                       ENV_VARS="NEXT_PUBLIC_API_URL=$(NEXT_PUBLIC_API_URL) BACKEND_URL=$(BACKEND_URL)"
+                      REVISION_SUFFIX=$(date -u +%Y%m%d%H%M%S)
                       if az containerapp show --name insure-plus-frontend --resource-group $(resourceGroup) &>/dev/null; then
                         az containerapp update \
                           --name insure-plus-frontend \
                           --resource-group $(resourceGroup) \
                           --image $(acrServer)/frontend:${{ parameters.imageTag }} \
+                          --revision-suffix $REVISION_SUFFIX \
                           --set-env-vars $ENV_VARS
                       else
                         az containerapp create \

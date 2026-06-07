@@ -59,7 +59,7 @@ stages:
                             "PRIMARY_AGENT_ID=$(PRIMARY_AGENT_ID)" \
                             "AGENT_API_KEY=$(AGENT_API_KEY)" \
                             "AGENT_MAX_COMPLETION_TOKENS=600" \
-                            "ALLOWED_ORIGINS=$(ALLOWED_ORIGINS)"
+                            "ALLOWED_ORIGINS_RAW=$(ALLOWED_ORIGINS_RAW)"
                       else
                         az containerapp create \
                           --name insure-plus-backend \
@@ -88,7 +88,7 @@ stages:
                             "PRIMARY_AGENT_ID=$(PRIMARY_AGENT_ID)" \
                             "AGENT_API_KEY=$(AGENT_API_KEY)" \
                             "AGENT_MAX_COMPLETION_TOKENS=600" \
-                            "ALLOWED_ORIGINS=$(ALLOWED_ORIGINS)"
+                            "ALLOWED_ORIGINS_RAW=$(ALLOWED_ORIGINS_RAW)"
                       fi
 
       - deployment: DeployFrontend

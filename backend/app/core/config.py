@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import PostgresDsn, computed_field, field_validator
+from pydantic import PostgresDsn, computed_field
 from functools import lru_cache
 import json
 
@@ -16,15 +16,7 @@ class Settings(BaseSettings):
     app_name: str = "Insure Plus API"
     app_version: str = "0.1.0"
     debug: bool = False
-    allowed_origins: list[str] = ["http://localhost:3000"]
-
-    @field_validator("allowed_origins", mode="before")
-    @classmethod
-    def parse_allowed_origins(cls, v: object) -> object:
-        if isinstance(v, str):
-            v = v.strip().strip("'\"")
-            return json.loads(v) if v.startswith("[") else [o.strip() for o in v.split(",") if o.strip()]
-        return v
+    allowed_origins_raw: str = "http://localhost:3000"
 
     # JWT
     jwt_secret_key: str
@@ -46,6 +38,13 @@ class Settings(BaseSettings):
 
     # Agent tool API key (used by Foundry to authenticate tool calls)
     agent_api_key: str = ""
+
+    @property
+    def allowed_origins(self) -> list[str]:
+        v = self.allowed_origins_raw.strip().strip("'\"")
+        if v.startswith("["):
+            return json.loads(v)
+        return [o.strip() for o in v.split(",") if o.strip()]
 
     @property
     def agent_reference(self) -> dict:

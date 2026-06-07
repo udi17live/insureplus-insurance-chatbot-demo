@@ -33,9 +33,10 @@ function ThemeToggle() {
 interface HeaderProps {
   onLoginClick?: () => void
   onNewChat?: () => void
+  onLogout?: () => void
 }
 
-export function Header({ onLoginClick, onNewChat }: HeaderProps) {
+export function Header({ onLoginClick, onNewChat, onLogout }: HeaderProps) {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -45,6 +46,7 @@ export function Header({ onLoginClick, onNewChat }: HeaderProps) {
     try {
       await logoutAction()
       logout()
+      onLogout?.()
     } finally {
       setLoggingOut(false)
     }

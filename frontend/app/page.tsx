@@ -1,21 +1,35 @@
 "use client"
 
 import * as React from "react"
-import { Send, SquarePen } from "lucide-react"
+import ReactMarkdown from "react-markdown"
+import { Send } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
 import { Header } from "@/components/header"
 import { AuthDialog } from "@/components/auth-dialog"
-import { streamChat } from "@/lib/chat"
+import { streamChat, type ToolResultEvent } from "@/lib/chat"
+import { PoliciesCard, QuoteCard, type PolicyResult, type QuoteResult } from "@/components/tool-cards"
 import { cn } from "@/lib/utils"
+
+type MessageContent =
+  | { type: "text"; text: string; options?: string[] }
+  | { type: "policies"; data: PolicyResult[] }
+  | { type: "quote"; data: QuoteResult }
 
 interface Message {
   id: string
   role: "user" | "assistant"
-  content: string
+  content: MessageContent
 }
 
 const STORAGE_KEY = "insureplus_chat"
+const OPTIONS_RE = /\[OPTIONS:\s*([^\]]+)\]/i
+
+function parseOptions(text: string): { clean: string; options: string[] } {
+  const match = text.match(OPTIONS_RE)
+  if (!match) return { clean: text, options: [] }
+  const options = match[1].split("|").map((s) => s.trim()).filter(Boolean)
+  return { clean: text.replace(OPTIONS_RE, "").trimEnd(), options }
+}
 
 function loadSession(): { messages: Message[]; threadId: string | null } {
   try {
@@ -31,12 +45,98 @@ function saveSession(messages: Message[], threadId: string | null) {
   } catch {}
 }
 
+function MessageBubble({
+  m,
+  isLast,
+  streaming,
+  onOption,
+}: {
+  m: Message
+  isLast: boolean
+  streaming: boolean
+  onOption: (opt: string) => void
+}) {
+  const isUser = m.role === "user"
+
+  if (m.content.type === "policies") {
+    return (
+      <div className="flex justify-start">
+        <div className="w-full max-w-[85%]">
+          <PoliciesCard policies={m.content.data} />
+        </div>
+      </div>
+    )
+  }
+
+  if (m.content.type === "quote") {
+    return (
+      <div className="flex justify-start">
+        <div className="w-full max-w-[85%]">
+          <QuoteCard
+            quote={m.content.data}
+            onConfirm={() => onOption("confirm")}
+            onDecline={() => onOption("decline")}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  const { clean, options } = parseOptions(m.content.text)
+  const showOptions = !isUser && isLast && !streaming && options.length > 0
+
+  return (
+    <div className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
+      <div
+        className={cn(
+          "max-w-[75%] rounded-sm px-4 py-2.5 text-sm",
+          isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+        )}
+      >
+        {clean ? (
+          isUser ? (
+            clean
+          ) : (
+            <ReactMarkdown
+              components={{
+                p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
+                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                ul: ({ children }) => <ul className="mb-1 ml-4 list-disc">{children}</ul>,
+                ol: ({ children }) => <ol className="mb-1 ml-4 list-decimal">{children}</ol>,
+                li: ({ children }) => <li className="mb-0.5">{children}</li>,
+              }}
+            >
+              {clean}
+            </ReactMarkdown>
+          )
+        ) : (
+          <span className="text-muted-foreground animate-pulse">···</span>
+        )}
+      </div>
+      {showOptions && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {options.map((opt) => (
+            <button
+              key={opt}
+              onClick={() => onOption(opt)}
+              className="rounded-full border border-border bg-background px-3 py-1.5 text-sm hover:bg-muted transition-colors"
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Page() {
   const [messages, setMessages] = React.useState<Message[]>([])
   const [input, setInput] = React.useState("")
   const [streaming, setStreaming] = React.useState(false)
   const [threadId, setThreadId] = React.useState<string | null>(null)
   const [authOpen, setAuthOpen] = React.useState(false)
+  const pendingMessage = React.useRef<string | null>(null)
   const bottomRef = React.useRef<HTMLDivElement>(null)
   const textareaRef = React.useRef<HTMLTextAreaElement>(null)
   const initialized = React.useRef(false)
@@ -73,18 +173,43 @@ export default function Page() {
     localStorage.removeItem(STORAGE_KEY)
   }
 
-  async function sendMessage() {
-    const text = input.trim()
+  async function sendMessage(override?: string) {
+    const text = override ?? input.trim()
     if (!text || streaming) return
 
-    const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text }
+    const userMsg: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: { type: "text", text },
+    }
     setMessages((prev) => [...prev, userMsg])
-    setInput("")
-    if (textareaRef.current) textareaRef.current.style.height = "auto"
+    if (!override) {
+      setInput("")
+      if (textareaRef.current) textareaRef.current.style.height = "auto"
+    }
     setStreaming(true)
 
     const assistantId = crypto.randomUUID()
-    setMessages((prev) => [...prev, { id: assistantId, role: "assistant", content: "" }])
+    setMessages((prev) => [
+      ...prev,
+      { id: assistantId, role: "assistant", content: { type: "text", text: "" } },
+    ])
+
+    function handleToolResult(event: ToolResultEvent) {
+      if (event.tool === "agent_list_policies") {
+        const policies = event.result as PolicyResult[]
+        setMessages((prev) => [
+          ...prev,
+          { id: crypto.randomUUID(), role: "assistant", content: { type: "policies", data: policies } },
+        ])
+      } else if (event.tool === "agent_create_quote") {
+        const quote = event.result as QuoteResult
+        setMessages((prev) => [
+          ...prev,
+          { id: crypto.randomUUID(), role: "assistant", content: { type: "quote", data: quote } },
+        ])
+      }
+    }
 
     try {
       await streamChat({
@@ -93,8 +218,18 @@ export default function Page() {
         onThread: (id) => setThreadId(id),
         onToken: (token) =>
           setMessages((prev) =>
-            prev.map((m) => (m.id === assistantId ? { ...m, content: m.content + token } : m))
+            prev.map((m) =>
+              m.id === assistantId && m.content.type === "text"
+                ? { ...m, content: { type: "text", text: m.content.text + token } }
+                : m
+            )
           ),
+        onToolResult: handleToolResult,
+        onAuthRequired: () => {
+          pendingMessage.current = text
+          setMessages((prev) => prev.filter((m) => m.id !== assistantId))
+          setAuthOpen(true)
+        },
       })
     } finally {
       setStreaming(false)
@@ -108,12 +243,24 @@ export default function Page() {
     }
   }
 
+  const lastIdx = messages.length - 1
+
   return (
     <div className="flex h-svh flex-col">
-      <Header onLoginClick={() => setAuthOpen(true)} onNewChat={messages.length > 0 ? startNewChat : undefined} />
-      <AuthDialog open={authOpen} onOpenChange={setAuthOpen} />
+      <Header onLoginClick={() => setAuthOpen(true)} onNewChat={messages.length > 0 ? startNewChat : undefined} onLogout={startNewChat} />
+      <AuthDialog
+        open={authOpen}
+        onOpenChange={setAuthOpen}
+        onSuccess={() => {
+          const msg = pendingMessage.current
+          if (msg) {
+            pendingMessage.current = null
+            sendMessage(msg)
+          }
+        }}
+      />
       <main className="mx-auto flex w-full max-w-225 flex-1 flex-col overflow-hidden px-4">
-        <ScrollArea className="flex-1 py-6">
+        <div className="flex-1 overflow-y-auto py-6">
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center">
               <p className="text-muted-foreground text-sm">
@@ -122,29 +269,19 @@ export default function Page() {
             </div>
           ) : (
             <div className="flex flex-col gap-6">
-              {messages.map((m) => (
-                <div
+              {messages.map((m, i) => (
+                <MessageBubble
                   key={m.id}
-                  className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}
-                >
-                  <div
-                    className={cn(
-                      "max-w-[75%] rounded-sm px-4 py-2.5 text-sm",
-                      m.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-foreground"
-                    )}
-                  >
-                    {m.content || (
-                      <span className="text-muted-foreground animate-pulse">···</span>
-                    )}
-                  </div>
-                </div>
+                  m={m}
+                  isLast={i === lastIdx}
+                  streaming={streaming}
+                  onOption={(opt) => sendMessage(opt)}
+                />
               ))}
               <div ref={bottomRef} />
             </div>
           )}
-        </ScrollArea>
+        </div>
 
         <div className="border-t py-4">
           <div className="flex items-center gap-2 rounded-sm border bg-background px-3 py-2">
@@ -160,7 +297,7 @@ export default function Page() {
             />
             <Button
               size="icon"
-              onClick={sendMessage}
+              onClick={() => sendMessage()}
               disabled={!input.trim() || streaming}
               className="shrink-0"
             >

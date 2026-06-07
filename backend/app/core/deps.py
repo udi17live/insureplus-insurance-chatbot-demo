@@ -3,6 +3,7 @@ from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import decode_token
 from app.models.user import User
@@ -70,3 +71,12 @@ async def get_optional_user(
 CurrentUser = Annotated[User, Depends(get_current_user)]
 OptionalUser = Annotated[User | None, Depends(get_optional_user)]
 DBSession = Annotated[AsyncSession, Depends(get_db)]
+
+
+async def verify_agent_key(request: Request) -> None:
+    key = request.headers.get("x-agent-key", "")
+    if not key or key != settings.agent_api_key:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid agent key")
+
+
+AgentAuth = Annotated[None, Depends(verify_agent_key)]

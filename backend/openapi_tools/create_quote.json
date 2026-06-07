@@ -1,0 +1,104 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Create Insurance Quote",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://rs70p1pc-8000.asse.devtunnels.ms/api/v1"
+    }
+  ],
+  "paths": {
+    "/agent/quotes": {
+      "post": {
+        "summary": "Create a quote",
+        "description": "Persists an insurance quote with the premium amount calculated from RAG pricing data. User identity is resolved server-side from thread_id — do not pass user_id.",
+        "operationId": "agent_create_quote",
+        "security": [{ "x-agent-key": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AgentQuoteCreate" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Created quote",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AgentQuoteOut" }
+              }
+            }
+          },
+          "401": { "description": "User is not authenticated (anonymous thread)" },
+          "404": { "description": "Thread not found" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "x-agent-key": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-agent-key"
+      }
+    },
+    "schemas": {
+      "AgentQuoteCreate": {
+        "type": "object",
+        "required": ["thread_id", "product_type", "collected_fields", "premium_amount", "coverage_summary"],
+        "properties": {
+          "thread_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The current conversation thread ID. Used server-side to identify the authenticated user."
+          },
+          "product_type": {
+            "type": "string",
+            "enum": ["motor", "bike", "life", "device"]
+          },
+          "collected_fields": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "All fields collected during the conversation (vehicle details, age, etc.)"
+          },
+          "premium_amount": {
+            "type": "number",
+            "description": "Annual premium in the specified currency, calculated from RAG pricing data."
+          },
+          "currency": {
+            "type": "string",
+            "default": "LKR"
+          },
+          "coverage_summary": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Key coverage details to display to the user (e.g. third_party_liability, own_damage, etc.)"
+          },
+          "expires_at": {
+            "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }]
+          }
+        }
+      },
+      "AgentQuoteOut": {
+        "type": "object",
+        "required": ["quote_id", "product_type", "premium_amount", "currency", "coverage_summary", "expires_at"],
+        "properties": {
+          "quote_id": { "type": "string" },
+          "product_type": {
+            "type": "string",
+            "enum": ["motor", "bike", "life", "device"]
+          },
+          "premium_amount": { "type": "number" },
+          "currency": { "type": "string" },
+          "coverage_summary": { "type": "object", "additionalProperties": true },
+          "expires_at": { "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }] }
+        }
+      }
+    }
+  }
+}

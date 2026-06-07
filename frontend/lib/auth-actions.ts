@@ -28,9 +28,9 @@ async function setAuthCookie(token: string) {
 }
 
 export async function loginAction(email: string, password: string): Promise<UserOut> {
-  const { data } = await serverApi.post<AuthResponse>("/auth/login", { email, password })
-  await setAuthCookie(data.access_token)
-  return data.user
+  const result = await serverApi.post<AuthResponse>("/auth/login", { email, password })
+  await setAuthCookie(result.access_token)
+  return result.user
 }
 
 export async function registerAction(
@@ -38,13 +38,13 @@ export async function registerAction(
   password: string,
   full_name: string
 ): Promise<UserOut> {
-  const { data } = await serverApi.post<AuthResponse>("/auth/register", {
+  const result = await serverApi.post<AuthResponse>("/auth/register", {
     email,
     password,
     full_name,
   })
-  await setAuthCookie(data.access_token)
-  return data.user
+  await setAuthCookie(result.access_token)
+  return result.user
 }
 
 export async function logoutAction(): Promise<void> {

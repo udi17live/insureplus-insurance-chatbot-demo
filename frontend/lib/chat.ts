@@ -1,13 +1,22 @@
 const base = process.env.NEXT_PUBLIC_API_URL ?? ""
 
+export type ToolName = "agent_list_policies" | "agent_create_quote" | "agent_cancel_policy"
+
+export interface ToolResultEvent {
+  tool: ToolName
+  result: unknown
+}
+
 export interface StreamChatOptions {
   message: string
   threadId: string | null
   onThread: (id: string) => void
   onToken: (token: string) => void
+  onToolResult?: (event: ToolResultEvent) => void
+  onAuthRequired?: () => void
 }
 
-export async function streamChat({ message, threadId, onThread, onToken }: StreamChatOptions) {
+export async function streamChat({ message, threadId, onThread, onToken, onToolResult, onAuthRequired }: StreamChatOptions) {
   const res = await fetch(`${base}/chat/message`, {
     method: "POST",
     credentials: "include",
@@ -45,11 +54,28 @@ export async function streamChat({ message, threadId, onThread, onToken }: Strea
         continue
       }
       const data = line.slice(6)
+
       if (currentEvent === "thread") {
         onThread(data.trim())
         currentEvent = ""
         continue
       }
+
+      if (currentEvent === "auth_required") {
+        onAuthRequired?.()
+        currentEvent = ""
+        continue
+      }
+
+      if (currentEvent === "tool_result") {
+        try {
+          const parsed = JSON.parse(data) as ToolResultEvent
+          onToolResult?.(parsed)
+        } catch {}
+        currentEvent = ""
+        continue
+      }
+
       if (data === "[DONE]") return
       onToken(data)
     }

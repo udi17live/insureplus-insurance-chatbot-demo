@@ -45,6 +45,9 @@ class Settings(BaseSettings):
     agent_max_prompt_tokens: int = 4000
     agent_max_completion_tokens: int = 600
 
+    # Agent tool API key (used by Foundry to authenticate tool calls)
+    agent_api_key: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

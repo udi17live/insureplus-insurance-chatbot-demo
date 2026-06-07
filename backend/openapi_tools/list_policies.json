@@ -1,0 +1,75 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "List User Policies",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://rs70p1pc-8000.asse.devtunnels.ms/api/v1"
+    }
+  ],
+  "paths": {
+    "/agent/policies": {
+      "get": {
+        "summary": "List user policies",
+        "description": "Returns all insurance policies for the user associated with the given thread_id. The backend resolves user identity from the thread — never pass user_id directly.",
+        "operationId": "agent_list_policies",
+        "security": [{ "x-agent-key": [] }],
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "The current conversation thread ID. Used server-side to identify the authenticated user."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of policies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/AgentPolicyOut" }
+                }
+              }
+            }
+          },
+          "401": { "description": "User is not authenticated (anonymous thread)" },
+          "404": { "description": "Thread not found" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "x-agent-key": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-agent-key"
+      }
+    },
+    "schemas": {
+      "AgentPolicyOut": {
+        "type": "object",
+        "required": ["policy_id", "policy_number", "product_type", "status", "premium_amount", "currency", "coverage_data", "start_date", "end_date"],
+        "properties": {
+          "policy_id": { "type": "string" },
+          "policy_number": { "type": "string" },
+          "product_type": {
+            "type": "string",
+            "enum": ["motor", "bike", "life", "device"]
+          },
+          "status": { "type": "string" },
+          "premium_amount": { "type": "number" },
+          "currency": { "type": "string" },
+          "coverage_data": { "type": "object", "additionalProperties": true },
+          "start_date": { "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }] },
+          "end_date": { "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }] }
+        }
+      }
+    }
+  }
+}

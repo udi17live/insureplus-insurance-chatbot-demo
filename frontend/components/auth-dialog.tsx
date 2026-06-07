@@ -18,9 +18,10 @@ import { useAuthStore } from "@/lib/auth-store"
 interface AuthDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onSuccess?: () => void
 }
 
-export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
+export function AuthDialog({ open, onOpenChange, onSuccess }: AuthDialogProps) {
   const login = useAuthStore((s) => s.login)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -37,6 +38,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       )
       login(user)
       onOpenChange(false)
+      onSuccess?.()
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??
@@ -65,6 +67,7 @@ export function AuthDialog({ open, onOpenChange }: AuthDialogProps) {
       )
       login(user)
       onOpenChange(false)
+      onSuccess?.()
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { detail?: string } } })?.response?.data?.detail ??

@@ -1,5 +1,7 @@
 "use client"
 
+import * as React from "react"
+import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 // ── Types mirroring backend AgentPolicyOut / AgentQuoteOut ──────────────────
@@ -68,7 +70,25 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 
 // ── PolicyCard ───────────────────────────────────────────────────────────────
 
-export function PolicyCard({ policy }: { policy: PolicyResult }) {
+export function PolicyCard({
+  policy,
+  onCancel,
+}: {
+  policy: PolicyResult
+  onCancel?: (policyId: string) => Promise<void> | void
+}) {
+  const [cancelling, setCancelling] = React.useState(false)
+
+  async function handleCancel() {
+    if (!onCancel) return
+    setCancelling(true)
+    try {
+      await onCancel(policy.policy_id)
+    } finally {
+      setCancelling(false)
+    }
+  }
+
   return (
     <CardShell>
       <div className="mb-3 flex items-center justify-between">
@@ -83,13 +103,31 @@ export function PolicyCard({ policy }: { policy: PolicyResult }) {
       <Row label="Premium" value={formatCurrency(policy.premium_amount, policy.currency)} />
       <Row label="Start" value={formatDate(policy.start_date)} />
       <Row label="End" value={formatDate(policy.end_date)} />
+      {onCancel && policy.status === "active" && (
+        <div className="mt-4">
+          <button
+            onClick={handleCancel}
+            disabled={cancelling}
+            className="w-full rounded-sm border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          >
+            {cancelling && <Loader2 className="h-3 w-3 animate-spin" />}
+            {cancelling ? "Cancelling…" : "Cancel Policy"}
+          </button>
+        </div>
+      )}
     </CardShell>
   )
 }
 
 // ── PoliciesCard (list result) ───────────────────────────────────────────────
 
-export function PoliciesCard({ policies }: { policies: PolicyResult[] }) {
+export function PoliciesCard({
+  policies,
+  onCancel,
+}: {
+  policies: PolicyResult[]
+  onCancel?: (policyId: string) => Promise<void> | void
+}) {
   if (policies.length === 0) {
     return (
       <CardShell>
@@ -100,7 +138,7 @@ export function PoliciesCard({ policies }: { policies: PolicyResult[] }) {
   return (
     <div className="flex flex-col gap-3">
       {policies.map((p) => (
-        <PolicyCard key={p.policy_id} policy={p} />
+        <PolicyCard key={p.policy_id} policy={p} onCancel={onCancel} />
       ))}
     </div>
   )

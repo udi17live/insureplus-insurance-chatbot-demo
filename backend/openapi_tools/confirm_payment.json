@@ -1,0 +1,80 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Confirm Quote Payment",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://rs70p1pc-8000.asse.devtunnels.ms/api/v1"
+    }
+  ],
+  "paths": {
+    "/agent/quotes/{quote_id}/confirm": {
+      "post": {
+        "summary": "Confirm payment for a quote",
+        "description": "Simulates payment confirmation and creates an active policy from the given quote. Call this when the user explicitly agrees to purchase. User identity is resolved server-side from thread_id — do not pass user_id.",
+        "operationId": "agent_confirm_payment",
+        "security": [{ "x-agent-key": [] }],
+        "parameters": [
+          {
+            "name": "quote_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "ID of the quote to confirm."
+          },
+          {
+            "name": "thread_id",
+            "in": "query",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" },
+            "description": "The current conversation thread ID. Used server-side to identify the authenticated user."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active policy created from the confirmed quote",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AgentPolicyOut" }
+              }
+            }
+          },
+          "401": { "description": "User is not authenticated (anonymous thread)" },
+          "404": { "description": "Quote or thread not found" },
+          "409": { "description": "Quote already confirmed or expired" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "x-agent-key": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-agent-key"
+      }
+    },
+    "schemas": {
+      "AgentPolicyOut": {
+        "type": "object",
+        "required": ["policy_id", "policy_number", "product_type", "status", "premium_amount", "currency", "coverage_data", "start_date", "end_date"],
+        "properties": {
+          "policy_id": { "type": "string" },
+          "policy_number": { "type": "string" },
+          "product_type": {
+            "type": "string",
+            "enum": ["motor", "bike", "life", "device"]
+          },
+          "status": { "type": "string" },
+          "premium_amount": { "type": "number" },
+          "currency": { "type": "string" },
+          "coverage_data": { "type": "object", "additionalProperties": true },
+          "start_date": { "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }] },
+          "end_date": { "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }] }
+        }
+      }
+    }
+  }
+}

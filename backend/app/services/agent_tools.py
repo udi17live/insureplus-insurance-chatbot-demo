@@ -4,15 +4,18 @@ from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repository.chat_thread import ChatThreadRepository
+from app.repository.payment import PaymentRepository
 from app.repository.policy import PolicyRepository
 from app.repository.policy_creation_state import PolicyCreationStateRepository
 from app.repository.quote import QuoteRepository
-from app.models.enums import CollectionStatus, PolicyStatus, QuoteStatus
+from app.models.enums import CollectionStatus, PaymentStatus, PolicyStatus, QuoteStatus
 from app.schemas.agent import AgentQuoteCreate, AgentQuoteOut, AgentPolicyOut
+from app.services.payment import PaymentService
 
 
 class AgentToolsService:
     def __init__(self, db: AsyncSession) -> None:
+        self.db = db
         self.thread_repo = ChatThreadRepository(db)
         self.policy_repo = PolicyRepository(db)
         self.quote_repo = QuoteRepository(db)
@@ -108,4 +111,19 @@ class AgentToolsService:
             coverage_data=policy.coverage_data,
             start_date=policy.start_date,
             end_date=policy.end_date,
+        )
+
+    async def confirm_payment(self, quote_id: uuid.UUID, thread_id: uuid.UUID) -> AgentPolicyOut:
+        user_id = await self._resolve_user(thread_id)
+        policy_out = await PaymentService(self.db).confirm_payment(quote_id, user_id)
+        return AgentPolicyOut(
+            policy_id=policy_out.id,
+            policy_number=policy_out.policy_number,
+            product_type=policy_out.product_type,
+            status=policy_out.status,
+            premium_amount=policy_out.premium_amount,
+            currency=policy_out.currency,
+            coverage_data=policy_out.coverage_data,
+            start_date=policy_out.start_date,
+            end_date=policy_out.end_date,
         )

@@ -7,13 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Header } from "@/components/header"
 import { AuthDialog } from "@/components/auth-dialog"
 import { streamChat, type ToolResultEvent } from "@/lib/chat"
-import { PoliciesCard, QuoteCard, type PolicyResult, type QuoteResult } from "@/components/tool-cards"
+import { PoliciesCard, QuoteCard, PolicyCard, type PolicyResult, type QuoteResult } from "@/components/tool-cards"
 import { cn } from "@/lib/utils"
 
 type MessageContent =
   | { type: "text"; text: string; options?: string[] }
   | { type: "policies"; data: PolicyResult[] }
-  | { type: "quote"; data: QuoteResult }
+  | { type: "quote"; data: QuoteResult; confirmed?: boolean }
+  | { type: "policy"; data: PolicyResult }
 
 interface Message {
   id: string
@@ -50,11 +51,15 @@ function MessageBubble({
   isLast,
   streaming,
   onOption,
+  onConfirm,
+  onCancel,
 }: {
   m: Message
   isLast: boolean
   streaming: boolean
   onOption: (opt: string) => void
+  onConfirm: (quoteId: string) => void
+  onCancel: (policyId: string) => Promise<void> | void
 }) {
   const isUser = m.role === "user"
 
@@ -62,21 +67,32 @@ function MessageBubble({
     return (
       <div className="flex justify-start">
         <div className="w-full max-w-[85%]">
-          <PoliciesCard policies={m.content.data} />
+          <PoliciesCard policies={m.content.data} onCancel={onCancel} />
         </div>
       </div>
     )
   }
 
   if (m.content.type === "quote") {
+    const { data: quoteData, confirmed } = m.content
     return (
       <div className="flex justify-start">
         <div className="w-full max-w-[85%]">
           <QuoteCard
-            quote={m.content.data}
-            onConfirm={() => onOption("confirm")}
-            onDecline={() => onOption("decline")}
+            quote={quoteData}
+            onConfirm={confirmed ? undefined : () => onConfirm(quoteData.quote_id)}
+            onDecline={confirmed ? undefined : () => onOption("decline")}
           />
+        </div>
+      </div>
+    )
+  }
+
+  if (m.content.type === "policy") {
+    return (
+      <div className="flex justify-start">
+        <div className="w-full max-w-[85%]">
+          <PolicyCard policy={m.content.data} />
         </div>
       </div>
     )
@@ -208,6 +224,12 @@ export default function Page() {
           ...prev,
           { id: crypto.randomUUID(), role: "assistant", content: { type: "quote", data: quote } },
         ])
+      } else if (event.tool === "agent_confirm_payment" || event.tool === "agent_cancel_policy") {
+        const policy = event.result as PolicyResult
+        setMessages((prev) => [
+          ...prev,
+          { id: crypto.randomUUID(), role: "assistant", content: { type: "policy", data: policy } },
+        ])
       }
     }
 
@@ -236,6 +258,21 @@ export default function Page() {
     }
   }
 
+  function handleConfirmQuote(quoteId: string) {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.content.type === "quote" && m.content.data.quote_id === quoteId
+          ? { ...m, content: { type: "quote" as const, data: m.content.data, confirmed: true } }
+          : m
+      )
+    )
+    sendMessage("yes, please confirm my quote and create the policy")
+  }
+
+  function handleCancelPolicy(policyId: string) {
+    sendMessage(`please cancel policy ${policyId}`)
+  }
+
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -247,7 +284,7 @@ export default function Page() {
 
   return (
     <div className="flex h-svh flex-col">
-      <Header onLoginClick={() => setAuthOpen(true)} onNewChat={messages.length > 0 ? startNewChat : undefined} onLogout={startNewChat} />
+      <Header onLoginClick={() => setAuthOpen(true)} onNewChat={messages.length > 0 ? startNewChat : undefined} onLogout={startNewChat} onMyPolicies={() => sendMessage("show my policies")} />
       <AuthDialog
         open={authOpen}
         onOpenChange={setAuthOpen}
@@ -276,6 +313,8 @@ export default function Page() {
                   isLast={i === lastIdx}
                   streaming={streaming}
                   onOption={(opt) => sendMessage(opt)}
+                  onConfirm={handleConfirmQuote}
+                  onCancel={handleCancelPolicy}
                 />
               ))}
               <div ref={bottomRef} />

@@ -10,7 +10,7 @@ class AgentQuoteCreate(BaseModel):
     product_type: ProductType
     collected_fields: dict[str, Any]
     premium_amount: float
-    currency: str = "LKR"
+    currency: str = "GBP"
     coverage_summary: dict[str, Any]
     expires_at: datetime | None = None
 

@@ -1,15 +1,26 @@
+import random
+import string
 import uuid
-import stripe
+from datetime import datetime, timezone, timedelta
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.core.config import settings
+
 from app.repository.payment import PaymentRepository
 from app.repository.quote import QuoteRepository
 from app.repository.policy import PolicyRepository
 from app.models.enums import PaymentStatus, PolicyStatus, QuoteStatus
-from app.schemas.payment import PaymentIntentResponse, PaymentOut
+from app.schemas.payment import PaymentOut
+from app.schemas.policy import PolicyOut
 
-stripe.api_key = settings.stripe_secret_key
+
+def _make_ref() -> str:
+    suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=10))
+    return f"MOCK-{suffix}"
+
+
+def _make_policy_number() -> str:
+    suffix = "".join(random.choices(string.ascii_uppercase + string.digits, k=8))
+    return f"IP-{suffix}"
 
 
 class PaymentService:
@@ -18,66 +29,42 @@ class PaymentService:
         self.quote_repo = QuoteRepository(db)
         self.policy_repo = PolicyRepository(db)
 
-    async def create_payment_intent(
-        self, quote_id: uuid.UUID, user_id: uuid.UUID, currency: str = "GBP"
-    ) -> PaymentIntentResponse:
+    async def confirm_payment(self, quote_id: uuid.UUID, user_id: uuid.UUID) -> PolicyOut:
+        """Simulate a successful payment: accept the quote and create an active policy."""
         quote = await self.quote_repo.get_by_id(quote_id)
         if not quote or quote.user_id != user_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quote not found")
-        if quote.status != QuoteStatus.active:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Quote is not active")
+        if quote.status not in (QuoteStatus.pending, QuoteStatus.active):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Quote is no longer available")
 
-        amount_pence = int(quote.premium_amount * 100)
-        intent = stripe.PaymentIntent.create(
-            amount=amount_pence,
-            currency=currency.lower(),
-            metadata={"quote_id": str(quote_id), "user_id": str(user_id)},
+        await self.quote_repo.update(quote, status=QuoteStatus.accepted)
+
+        now = datetime.now(timezone.utc)
+        policy = await self.policy_repo.create(
+            user_id=user_id,
+            quote_id=quote_id,
+            policy_number=_make_policy_number(),
+            product_type=quote.product_type,
+            status=PolicyStatus.active,
+            coverage_data=quote.coverage_summary,
+            premium_amount=quote.premium_amount,
+            currency=quote.currency,
+            start_date=now,
+            end_date=now + timedelta(days=365),
         )
 
         await self.repo.create(
             user_id=user_id,
             quote_id=quote_id,
-            stripe_payment_intent_id=intent["id"],
+            policy_id=policy.id,
+            payment_reference=_make_ref(),
             amount=quote.premium_amount,
-            currency=currency.upper(),
-            status=PaymentStatus.pending,
-            stripe_metadata=dict(intent),
+            currency=quote.currency,
+            status=PaymentStatus.succeeded,
+            metadata_={},
         )
 
-        return PaymentIntentResponse(
-            client_secret=intent["client_secret"],
-            payment_intent_id=intent["id"],
-            amount=quote.premium_amount,
-            currency=currency.upper(),
-        )
-
-    async def handle_webhook(self, payload: bytes, sig_header: str) -> None:
-        try:
-            event = stripe.Webhook.construct_event(payload, sig_header, settings.stripe_webhook_secret)
-        except stripe.error.SignatureVerificationError:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid webhook signature")
-
-        if event["type"] == "payment_intent.succeeded":
-            await self._on_payment_succeeded(event["data"]["object"])
-        elif event["type"] == "payment_intent.payment_failed":
-            await self._on_payment_failed(event["data"]["object"])
-
-    async def _on_payment_succeeded(self, intent: dict) -> None:
-        payment = await self.repo.get_by_stripe_payment_intent(intent["id"])
-        if not payment:
-            return
-        await self.repo.update(payment, status=PaymentStatus.succeeded, stripe_metadata=intent)
-
-        if payment.quote_id:
-            quote = await self.quote_repo.get_by_id(payment.quote_id)
-            if quote:
-                await self.quote_repo.update(quote, status=QuoteStatus.accepted)
-
-    async def _on_payment_failed(self, intent: dict) -> None:
-        payment = await self.repo.get_by_stripe_payment_intent(intent["id"])
-        if not payment:
-            return
-        await self.repo.update(payment, status=PaymentStatus.failed, stripe_metadata=intent)
+        return PolicyOut.model_validate(policy)
 
     async def get_user_payments(self, user_id: uuid.UUID) -> list[PaymentOut]:
         payments = await self.repo.get_all_by_user(user_id)

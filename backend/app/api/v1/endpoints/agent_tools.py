@@ -48,3 +48,18 @@ async def agent_cancel_policy(
     db: DBSession,
 ):
     return await AgentToolsService(db).cancel_policy(policy_id, thread_id)
+
+
+@router.post(
+    "/quotes/{quote_id}/confirm",
+    response_model=AgentPolicyOut,
+    summary="Confirm payment for a quote",
+    description="Simulates payment, creates an active policy, and returns it.",
+)
+async def agent_confirm_payment(
+    quote_id: uuid.UUID,
+    thread_id: uuid.UUID,
+    _: AgentAuth,
+    db: DBSession,
+):
+    return await AgentToolsService(db).confirm_payment(quote_id, thread_id)

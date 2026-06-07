@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useTheme } from "next-themes"
-import { Sun, Moon, LogIn, LogOut, Loader2, SquarePen } from "lucide-react"
+import { Sun, Moon, LogIn, LogOut, Loader2, SquarePen, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -34,9 +34,10 @@ interface HeaderProps {
   onLoginClick?: () => void
   onNewChat?: () => void
   onLogout?: () => void
+  onMyPolicies?: () => void
 }
 
-export function Header({ onLoginClick, onNewChat, onLogout }: HeaderProps) {
+export function Header({ onLoginClick, onNewChat, onLogout, onMyPolicies }: HeaderProps) {
   const user = useAuthStore((s) => s.user)
   const logout = useAuthStore((s) => s.logout)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -94,6 +95,13 @@ export function Header({ onLoginClick, onNewChat, onLogout }: HeaderProps) {
                   )}
                   <p className="text-xs text-muted-foreground">{user.email}</p>
                 </div>
+                <DropdownMenuSeparator />
+                {onMyPolicies && (
+                  <DropdownMenuItem onClick={onMyPolicies}>
+                    <FileText className="mr-2 h-4 w-4" />
+                    My Policies
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive"

@@ -74,7 +74,7 @@ DBSession = Annotated[AsyncSession, Depends(get_db)]
 
 
 async def verify_agent_key(request: Request) -> None:
-    key = request.headers.get("x-agent-key", "")
+    key = request.headers.get("x-api-key", "") or request.headers.get("x-agent-key", "")
     if not key or key != settings.agent_api_key:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid agent key")
 

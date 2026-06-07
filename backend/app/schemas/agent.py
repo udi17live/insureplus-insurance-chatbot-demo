@@ -6,7 +6,7 @@ from app.models.enums import ProductType
 
 
 class AgentQuoteCreate(BaseModel):
-    thread_id: uuid.UUID
+    session_id: str
     product_type: ProductType
     collected_fields: dict[str, Any]
     premium_amount: float

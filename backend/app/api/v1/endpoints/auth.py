@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, status
-from app.core.deps import DBSession
+from app.core.deps import CurrentUser, DBSession
 from app.core.limiter import limiter
-from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest
+from app.schemas.auth import AuthResponse, LoginRequest, RegisterRequest, UserOut
 from app.services.auth import AuthService
 
 router = APIRouter()
@@ -17,3 +17,8 @@ async def register(request: Request, body: RegisterRequest, db: DBSession):
 @limiter.limit("10/minute")
 async def login(request: Request, body: LoginRequest, db: DBSession):
     return await AuthService(db).login(body.email, body.password)
+
+
+@router.get("/me", response_model=UserOut)
+async def me(current_user: CurrentUser):
+    return UserOut(id=str(current_user.id), email=current_user.email, full_name=current_user.full_name)

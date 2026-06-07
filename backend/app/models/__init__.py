@@ -1,5 +1,5 @@
 from app.models.user import User
-from app.models.chat_thread import ChatThread
+from app.models.chat_session import ChatSession
 from app.models.policy_creation_state import PolicyCreationState
 from app.models.quote import Quote
 from app.models.policy import Policy
@@ -9,7 +9,7 @@ from app.models.tool_call_log import ToolCallLog
 
 __all__ = [
     "User",
-    "ChatThread",
+    "ChatSession",
     "PolicyCreationState",
     "Quote",
     "Policy",

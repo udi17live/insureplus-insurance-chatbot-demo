@@ -8,11 +8,11 @@ from app.models.mixins import UUIDMixin, TimestampMixin
 from app.models.enums import ProductType, ThreadStatus
 
 
-class ChatThread(UUIDMixin, TimestampMixin, Base):
-    __tablename__ = "chat_threads"
+class ChatSession(UUIDMixin, TimestampMixin, Base):
+    __tablename__ = "chat_sessions"
 
     user_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
-    foundry_thread_id: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    last_response_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     title: Mapped[str | None] = mapped_column(String(500))
     status: Mapped[ThreadStatus] = mapped_column(default=ThreadStatus.active, nullable=False)
     product_interest: Mapped[ProductType | None] = mapped_column(nullable=True)

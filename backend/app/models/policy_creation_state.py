@@ -12,7 +12,7 @@ class PolicyCreationState(UUIDMixin, TimestampMixin, Base):
     __tablename__ = "policy_creation_states"
 
     user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
-    thread_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("chat_threads.id"), nullable=False)
+    session_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("chat_sessions.id"), nullable=False)
     product_type: Mapped[ProductType] = mapped_column(nullable=False)
     status: Mapped[CollectionStatus] = mapped_column(default=CollectionStatus.collecting, nullable=False)
     collected_data: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)

@@ -1,35 +1,24 @@
 {
   "openapi": "3.1.0",
-  "info": {
-    "title": "Cancel Policy",
-    "version": "1.0.0"
-  },
-  "servers": [
-    {
-      "url": "https://rs70p1pc-8000.asse.devtunnels.ms/api/v1"
-    }
-  ],
+  "info": { "title": "Cancel Policy", "version": "1.0.0" },
+  "servers": [{ "url": "https://rs70p1pc-8000.asse.devtunnels.ms/api/v1" }],
   "paths": {
     "/agent/policies/{policy_id}/cancel": {
       "post": {
-        "summary": "Cancel a policy",
-        "description": "Cancels an active insurance policy. User identity and policy ownership are verified server-side from thread_id — do not pass user_id.",
+        "description": "Cancels an active insurance policy. User identity and policy ownership are verified server-side from session_id.",
         "operationId": "agent_cancel_policy",
-        "security": [{ "x-agent-key": [] }],
         "parameters": [
           {
             "name": "policy_id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "format": "uuid" },
-            "description": "ID of the policy to cancel."
+            "schema": { "type": "string", "format": "uuid" }
           },
           {
-            "name": "thread_id",
+            "name": "session_id",
             "in": "query",
             "required": true,
-            "schema": { "type": "string", "format": "uuid" },
-            "description": "The current conversation thread ID. Used server-side to verify the user owns this policy."
+            "schema": { "type": "string", "format": "uuid" }
           }
         ],
         "responses": {
@@ -37,44 +26,36 @@
             "description": "Cancelled policy",
             "content": {
               "application/json": {
-                "schema": { "$ref": "#/components/schemas/AgentPolicyOut" }
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "policy_id": { "type": "string" },
+                    "policy_number": { "type": "string" },
+                    "product_type": { "type": "string" },
+                    "status": { "type": "string" },
+                    "premium_amount": { "type": "number" },
+                    "currency": { "type": "string" },
+                    "coverage_data": { "type": "object" },
+                    "start_date": { "type": "string" },
+                    "end_date": { "type": "string" }
+                  }
+                }
               }
             }
-          },
-          "401": { "description": "User is not authenticated (anonymous thread)" },
-          "404": { "description": "Policy or thread not found" },
-          "409": { "description": "Policy is not active" }
-        }
+          }
+        },
+        "security": [{ "apiKeyHeader": [] }]
       }
     }
   },
   "components": {
     "securitySchemes": {
-      "x-agent-key": {
+      "apiKeyHeader": {
         "type": "apiKey",
-        "in": "header",
-        "name": "x-agent-key"
-      }
-    },
-    "schemas": {
-      "AgentPolicyOut": {
-        "type": "object",
-        "required": ["policy_id", "policy_number", "product_type", "status", "premium_amount", "currency", "coverage_data", "start_date", "end_date"],
-        "properties": {
-          "policy_id": { "type": "string" },
-          "policy_number": { "type": "string" },
-          "product_type": {
-            "type": "string",
-            "enum": ["motor", "bike", "life", "device"]
-          },
-          "status": { "type": "string" },
-          "premium_amount": { "type": "number" },
-          "currency": { "type": "string" },
-          "coverage_data": { "type": "object", "additionalProperties": true },
-          "start_date": { "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }] },
-          "end_date": { "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }] }
-        }
+        "name": "x-api-key",
+        "in": "header"
       }
     }
-  }
+  },
+  "security": [{ "apiKeyHeader": [] }]
 }

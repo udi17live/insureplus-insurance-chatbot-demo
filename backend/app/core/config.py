@@ -41,12 +41,15 @@ class Settings(BaseSettings):
     acs_connection_string: str = ""
     acs_sender_address: str = ""
 
-    # Agent run limits
-    agent_max_prompt_tokens: int = 4000
+    # Agent response limit
     agent_max_completion_tokens: int = 600
 
     # Agent tool API key (used by Foundry to authenticate tool calls)
     agent_api_key: str = ""
+
+    @property
+    def agent_reference(self) -> dict:
+        return {"name": self.primary_agent_id, "type": "agent_reference"}
 
 
 @lru_cache

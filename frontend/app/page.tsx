@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Header } from "@/components/header"
 import { AuthDialog } from "@/components/auth-dialog"
 import { streamChat, type ToolResultEvent } from "@/lib/chat"
+import { fetchMeAction } from "@/lib/auth-actions"
+import { useAuthStore } from "@/lib/auth-store"
 import { PoliciesCard, QuoteCard, PolicyCard, type PolicyResult, type QuoteResult } from "@/components/tool-cards"
 import { cn } from "@/lib/utils"
 
@@ -32,17 +34,17 @@ function parseOptions(text: string): { clean: string; options: string[] } {
   return { clean: text.replace(OPTIONS_RE, "").trimEnd(), options }
 }
 
-function loadSession(): { messages: Message[]; threadId: string | null } {
+function loadSession(): { messages: Message[]; sessionId: string | null } {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) return JSON.parse(raw)
   } catch {}
-  return { messages: [], threadId: null }
+  return { messages: [], sessionId: null }
 }
 
-function saveSession(messages: Message[], threadId: string | null) {
+function saveSession(messages: Message[], sessionId: string | null) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ messages, threadId }))
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ messages, sessionId }))
   } catch {}
 }
 
@@ -147,10 +149,11 @@ function MessageBubble({
 }
 
 export default function Page() {
+  const login = useAuthStore((s) => s.login)
   const [messages, setMessages] = React.useState<Message[]>([])
   const [input, setInput] = React.useState("")
   const [streaming, setStreaming] = React.useState(false)
-  const [threadId, setThreadId] = React.useState<string | null>(null)
+  const [sessionId, setSessionId] = React.useState<string | null>(null)
   const [authOpen, setAuthOpen] = React.useState(false)
   const pendingMessage = React.useRef<string | null>(null)
   const bottomRef = React.useRef<HTMLDivElement>(null)
@@ -162,13 +165,14 @@ export default function Page() {
     initialized.current = true
     const session = loadSession()
     setMessages(session.messages)
-    setThreadId(session.threadId)
+    setSessionId(session.sessionId)
+    fetchMeAction().then((user) => { if (user) login(user) })
   }, [])
 
   React.useEffect(() => {
     if (!initialized.current) return
-    saveSession(messages, threadId)
-  }, [messages, threadId])
+    saveSession(messages, sessionId)
+  }, [messages, sessionId])
 
   React.useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -183,7 +187,7 @@ export default function Page() {
 
   function startNewChat() {
     setMessages([])
-    setThreadId(null)
+    setSessionId(null)
     setInput("")
     if (textareaRef.current) textareaRef.current.style.height = "auto"
     localStorage.removeItem(STORAGE_KEY)
@@ -211,24 +215,33 @@ export default function Page() {
       { id: assistantId, role: "assistant", content: { type: "text", text: "" } },
     ])
 
+    function unwrapResult(result: unknown): unknown {
+      if (result && typeof result === "object" && "response" in result) {
+        const r = (result as { response: unknown }).response
+        if (typeof r === "string") {
+          try { return JSON.parse(r) } catch {}
+        }
+        return r
+      }
+      return result
+    }
+
     function handleToolResult(event: ToolResultEvent) {
+      const data = unwrapResult(event.result)
       if (event.tool === "agent_list_policies") {
-        const policies = event.result as PolicyResult[]
         setMessages((prev) => [
           ...prev,
-          { id: crypto.randomUUID(), role: "assistant", content: { type: "policies", data: policies } },
+          { id: crypto.randomUUID(), role: "assistant", content: { type: "policies", data: data as PolicyResult[] } },
         ])
       } else if (event.tool === "agent_create_quote") {
-        const quote = event.result as QuoteResult
         setMessages((prev) => [
           ...prev,
-          { id: crypto.randomUUID(), role: "assistant", content: { type: "quote", data: quote } },
+          { id: crypto.randomUUID(), role: "assistant", content: { type: "quote", data: data as QuoteResult } },
         ])
       } else if (event.tool === "agent_confirm_payment" || event.tool === "agent_cancel_policy") {
-        const policy = event.result as PolicyResult
         setMessages((prev) => [
           ...prev,
-          { id: crypto.randomUUID(), role: "assistant", content: { type: "policy", data: policy } },
+          { id: crypto.randomUUID(), role: "assistant", content: { type: "policy", data: data as PolicyResult } },
         ])
       }
     }
@@ -236,8 +249,8 @@ export default function Page() {
     try {
       await streamChat({
         message: text,
-        threadId,
-        onThread: (id) => setThreadId(id),
+        sessionId,
+        onThread: (id) => setSessionId(id),
         onToken: (token) =>
           setMessages((prev) =>
             prev.map((m) =>
@@ -284,7 +297,7 @@ export default function Page() {
 
   return (
     <div className="flex h-svh flex-col">
-      <Header onLoginClick={() => setAuthOpen(true)} onNewChat={messages.length > 0 ? startNewChat : undefined} onLogout={startNewChat} onMyPolicies={() => sendMessage("show my policies")} />
+      <Header onLoginClick={() => { pendingMessage.current = null; setAuthOpen(true) }} onNewChat={messages.length > 0 ? startNewChat : undefined} onLogout={startNewChat} />
       <AuthDialog
         open={authOpen}
         onOpenChange={setAuthOpen}

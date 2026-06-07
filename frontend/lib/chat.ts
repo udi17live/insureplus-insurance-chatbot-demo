@@ -1,6 +1,4 @@
-const base = process.env.NEXT_PUBLIC_API_URL ?? ""
-
-export type ToolName = "agent_list_policies" | "agent_create_quote" | "agent_cancel_policy"
+export type ToolName = "agent_list_policies" | "agent_create_quote" | "agent_confirm_payment" | "agent_cancel_policy"
 
 export interface ToolResultEvent {
   tool: ToolName
@@ -9,19 +7,18 @@ export interface ToolResultEvent {
 
 export interface StreamChatOptions {
   message: string
-  threadId: string | null
+  sessionId: string | null
   onThread: (id: string) => void
   onToken: (token: string) => void
   onToolResult?: (event: ToolResultEvent) => void
   onAuthRequired?: () => void
 }
 
-export async function streamChat({ message, threadId, onThread, onToken, onToolResult, onAuthRequired }: StreamChatOptions) {
-  const res = await fetch(`${base}/chat/message`, {
+export async function streamChat({ message, sessionId, onThread, onToken, onToolResult, onAuthRequired }: StreamChatOptions) {
+  const res = await fetch("/api/chat", {
     method: "POST",
-    credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, thread_id: threadId }),
+    body: JSON.stringify({ message, session_id: sessionId }),
   })
 
   if (!res.ok) {
@@ -62,6 +59,7 @@ export async function streamChat({ message, threadId, onThread, onToken, onToolR
       }
 
       if (currentEvent === "auth_required") {
+        console.log("[chat] auth_required received")
         onAuthRequired?.()
         currentEvent = ""
         continue

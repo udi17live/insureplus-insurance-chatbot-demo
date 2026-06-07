@@ -6,14 +6,14 @@ from app.models.enums import ProductType, ThreadStatus
 
 class ChatMessageRequest(BaseModel):
     message: str
-    thread_id: uuid.UUID | None = None
+    session_id: uuid.UUID | None = None
 
 
-class ThreadOut(BaseModel):
+class SessionOut(BaseModel):
     model_config = {"from_attributes": True}
 
     id: uuid.UUID
-    foundry_thread_id: str
+    last_response_id: str | None
     title: str | None
     status: ThreadStatus
     product_interest: ProductType | None
@@ -21,10 +21,3 @@ class ThreadOut(BaseModel):
     last_message_at: datetime | None
     created_at: datetime
     updated_at: datetime
-
-
-class MessageOut(BaseModel):
-    id: str
-    role: str
-    content: str
-    created_at: int

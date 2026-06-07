@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Any
 from pydantic import BaseModel
@@ -7,9 +8,9 @@ from app.models.enums import PolicyStatus, ProductType
 class PolicyOut(BaseModel):
     model_config = {"from_attributes": True}
 
-    id: str
-    user_id: str
-    quote_id: str | None
+    id: uuid.UUID
+    user_id: uuid.UUID
+    quote_id: uuid.UUID | None
     policy_number: str
     product_type: ProductType
     status: PolicyStatus

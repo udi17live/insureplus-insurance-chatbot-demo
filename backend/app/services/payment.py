@@ -34,7 +34,7 @@ class PaymentService:
         quote = await self.quote_repo.get_by_id(quote_id)
         if not quote or quote.user_id != user_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quote not found")
-        if quote.status not in (QuoteStatus.pending, QuoteStatus.active):
+        if quote.status != QuoteStatus.pending:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Quote is no longer available")
 
         await self.quote_repo.update(quote, status=QuoteStatus.accepted)

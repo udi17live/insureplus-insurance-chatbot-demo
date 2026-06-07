@@ -51,3 +51,11 @@ export async function logoutAction(): Promise<void> {
   const jar = await cookies()
   jar.delete("access_token")
 }
+
+export async function fetchMeAction(): Promise<UserOut | null> {
+  try {
+    return await serverApi.get<UserOut>("/auth/me")
+  } catch {
+    return null
+  }
+}

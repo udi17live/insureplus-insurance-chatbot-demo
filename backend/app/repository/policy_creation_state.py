@@ -17,8 +17,8 @@ class PolicyCreationStateRepository(BaseRepository[PolicyCreationState]):
         )
         return result.scalar_one_or_none()
 
-    async def get_by_thread(self, thread_id: uuid.UUID) -> PolicyCreationState | None:
+    async def get_by_thread(self, session_id: uuid.UUID) -> PolicyCreationState | None:
         result = await self.db.execute(
-            select(PolicyCreationState).where(PolicyCreationState.thread_id == thread_id)
+            select(PolicyCreationState).where(PolicyCreationState.session_id == session_id)
         )
         return result.scalar_one_or_none()

@@ -1,0 +1,46 @@
+trigger:
+  branches:
+    include:
+      - release
+
+variables:
+  acrServer: insureplusacr.azurecr.io
+  imageTag: $(Build.BuildId)
+
+stages:
+  - stage: Build
+    displayName: Build & Push Images
+    jobs:
+      - job: BuildBackend
+        displayName: Build Backend
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: Docker@2
+            displayName: Build and push backend image
+            inputs:
+              command: buildAndPush
+              containerRegistry: insure-plus-acr-connection
+              repository: backend
+              dockerfile: backend/Dockerfile
+              buildContext: backend
+              tags: |
+                $(imageTag)
+                latest
+
+      - job: BuildFrontend
+        displayName: Build Frontend
+        pool:
+          vmImage: ubuntu-latest
+        steps:
+          - task: Docker@2
+            displayName: Build and push frontend image
+            inputs:
+              command: buildAndPush
+              containerRegistry: insure-plus-acr-connection
+              repository: frontend
+              dockerfile: frontend/Dockerfile
+              buildContext: frontend
+              tags: |
+                $(imageTag)
+                latest

@@ -1,0 +1,106 @@
+trigger: none
+
+parameters:
+  - name: imageTag
+    displayName: Image tag to deploy
+    type: string
+    default: latest
+
+variables:
+  - group: insure-plus-prod-vars
+  - name: acrServer
+    value: insureplusacr.azurecr.io
+  - name: resourceGroup
+    value: insureplus-rg
+  - name: containerAppsEnv
+    value: insure-plus-env
+
+stages:
+  - stage: Deploy
+    displayName: Deploy to Container Apps
+    jobs:
+      - deployment: DeployBackend
+        displayName: Deploy Backend
+        pool:
+          vmImage: ubuntu-latest
+        environment: production
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  displayName: Deploy backend container app
+                  inputs:
+                    azureSubscription: insure-plus-azure-connection
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      if az containerapp show --name insure-plus-backend --resource-group $(resourceGroup) &>/dev/null; then
+                        az containerapp update \
+                          --name insure-plus-backend \
+                          --resource-group $(resourceGroup) \
+                          --image $(acrServer)/backend:${{ parameters.imageTag }}
+                      else
+                        az containerapp create \
+                          --name insure-plus-backend \
+                          --resource-group $(resourceGroup) \
+                          --environment $(containerAppsEnv) \
+                          --image $(acrServer)/backend:${{ parameters.imageTag }} \
+                          --registry-server $(acrServer) \
+                          --target-port 8000 \
+                          --ingress external \
+                          --min-replicas 1 \
+                          --max-replicas 3 \
+                          --env-vars \
+                            APP_NAME="Insure Plus API" \
+                            DEBUG=false \
+                            DATABASE_URL="$(DATABASE_URL)" \
+                            REDIS_URL="$(REDIS_URL)" \
+                            JWT_SECRET_KEY="$(JWT_SECRET_KEY)" \
+                            JWT_ALGORITHM=HS256 \
+                            JWT_ACCESS_TOKEN_EXPIRE_MINUTES=60 \
+                            AZURE_TENANT_ID="$(AZURE_TENANT_ID)" \
+                            AZURE_CLIENT_ID="$(AZURE_CLIENT_ID)" \
+                            AZURE_CLIENT_SECRET="$(AZURE_CLIENT_SECRET)" \
+                            AZURE_AI_PROJECT_BASE_ENDPOINT="$(AZURE_AI_PROJECT_BASE_ENDPOINT)" \
+                            PRIMARY_AGENT_ID="$(PRIMARY_AGENT_ID)" \
+                            AGENT_API_KEY="$(AGENT_API_KEY)" \
+                            AGENT_MAX_COMPLETION_TOKENS=600 \
+                            ALLOWED_ORIGINS="$(ALLOWED_ORIGINS)"
+                      fi
+
+      - deployment: DeployFrontend
+        displayName: Deploy Frontend
+        dependsOn: DeployBackend
+        pool:
+          vmImage: ubuntu-latest
+        environment: production
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  displayName: Deploy frontend container app
+                  inputs:
+                    azureSubscription: insure-plus-azure-connection
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      if az containerapp show --name insure-plus-frontend --resource-group $(resourceGroup) &>/dev/null; then
+                        az containerapp update \
+                          --name insure-plus-frontend \
+                          --resource-group $(resourceGroup) \
+                          --image $(acrServer)/frontend:${{ parameters.imageTag }}
+                      else
+                        az containerapp create \
+                          --name insure-plus-frontend \
+                          --resource-group $(resourceGroup) \
+                          --environment $(containerAppsEnv) \
+                          --image $(acrServer)/frontend:${{ parameters.imageTag }} \
+                          --registry-server $(acrServer) \
+                          --target-port 3000 \
+                          --ingress external \
+                          --min-replicas 1 \
+                          --env-vars \
+                            NEXT_PUBLIC_API_URL="$(NEXT_PUBLIC_API_URL)"
+                      fi

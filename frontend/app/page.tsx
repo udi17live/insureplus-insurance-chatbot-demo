@@ -9,7 +9,13 @@ import { AuthDialog } from "@/components/auth-dialog"
 import { streamChat, type ToolResultEvent } from "@/lib/chat"
 import { fetchMeAction } from "@/lib/auth-actions"
 import { useAuthStore } from "@/lib/auth-store"
-import { PoliciesCard, QuoteCard, PolicyCard, type PolicyResult, type QuoteResult } from "@/components/tool-cards"
+import {
+  PoliciesCard,
+  QuoteCard,
+  PolicyCard,
+  type PolicyResult,
+  type QuoteResult,
+} from "@/components/tool-cards"
 import { cn } from "@/lib/utils"
 
 type MessageContent =
@@ -30,7 +36,10 @@ const OPTIONS_RE = /\[OPTIONS:\s*([^\]]+)\]/i
 function parseOptions(text: string): { clean: string; options: string[] } {
   const match = text.match(OPTIONS_RE)
   if (!match) return { clean: text, options: [] }
-  const options = match[1].split("|").map((s) => s.trim()).filter(Boolean)
+  const options = match[1]
+    .split("|")
+    .map((s) => s.trim())
+    .filter(Boolean)
   return { clean: text.replace(OPTIONS_RE, "").trimEnd(), options }
 }
 
@@ -61,7 +70,7 @@ function MessageBubble({
   streaming: boolean
   onOption: (opt: string) => void
   onConfirm: (quoteId: string) => void
-  onCancel: (policyId: string) => Promise<void> | void
+  onCancel: (policyId: string, policyNumber?: string) => Promise<void> | void
 }) {
   const isUser = m.role === "user"
 
@@ -82,7 +91,9 @@ function MessageBubble({
         <div className="w-full max-w-[85%]">
           <QuoteCard
             quote={quoteData}
-            onConfirm={confirmed ? undefined : () => onConfirm(quoteData.quote_id)}
+            onConfirm={
+              confirmed ? undefined : () => onConfirm(quoteData.quote_id)
+            }
             onDecline={confirmed ? undefined : () => onOption("decline")}
           />
         </div>
@@ -108,7 +119,9 @@ function MessageBubble({
       <div
         className={cn(
           "max-w-[75%] rounded-sm px-4 py-2.5 text-sm",
-          isUser ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+          isUser
+            ? "bg-primary text-primary-foreground"
+            : "bg-muted text-foreground"
         )}
       >
         {clean ? (
@@ -117,10 +130,18 @@ function MessageBubble({
           ) : (
             <ReactMarkdown
               components={{
-                p: ({ children }) => <p className="mb-1 last:mb-0">{children}</p>,
-                strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                ul: ({ children }) => <ul className="mb-1 ml-4 list-disc">{children}</ul>,
-                ol: ({ children }) => <ol className="mb-1 ml-4 list-decimal">{children}</ol>,
+                p: ({ children }) => (
+                  <p className="mb-1 last:mb-0">{children}</p>
+                ),
+                strong: ({ children }) => (
+                  <strong className="font-semibold">{children}</strong>
+                ),
+                ul: ({ children }) => (
+                  <ul className="mb-1 ml-4 list-disc">{children}</ul>
+                ),
+                ol: ({ children }) => (
+                  <ol className="mb-1 ml-4 list-decimal">{children}</ol>
+                ),
                 li: ({ children }) => <li className="mb-0.5">{children}</li>,
               }}
             >
@@ -128,7 +149,7 @@ function MessageBubble({
             </ReactMarkdown>
           )
         ) : (
-          <span className="text-muted-foreground animate-pulse">···</span>
+          <span className="animate-pulse text-muted-foreground">···</span>
         )}
       </div>
       {showOptions && (
@@ -137,7 +158,7 @@ function MessageBubble({
             <button
               key={opt}
               onClick={() => onOption(opt)}
-              className="rounded-full border border-border bg-background px-3 py-1.5 text-sm hover:bg-muted transition-colors"
+              className="rounded-full border border-border bg-background px-3 py-1.5 text-sm transition-colors hover:bg-muted"
             >
               {opt}
             </button>
@@ -166,7 +187,9 @@ export default function Page() {
     const session = loadSession()
     setMessages(session.messages)
     setSessionId(session.sessionId)
-    fetchMeAction().then((user) => { if (user) login(user) })
+    fetchMeAction().then((user) => {
+      if (user) login(user)
+    })
   }, [])
 
   React.useEffect(() => {
@@ -212,14 +235,20 @@ export default function Page() {
     const assistantId = crypto.randomUUID()
     setMessages((prev) => [
       ...prev,
-      { id: assistantId, role: "assistant", content: { type: "text", text: "" } },
+      {
+        id: assistantId,
+        role: "assistant",
+        content: { type: "text", text: "" },
+      },
     ])
 
     function unwrapResult(result: unknown): unknown {
       if (result && typeof result === "object" && "response" in result) {
         const r = (result as { response: unknown }).response
         if (typeof r === "string") {
-          try { return JSON.parse(r) } catch {}
+          try {
+            return JSON.parse(r)
+          } catch {}
         }
         return r
       }
@@ -231,17 +260,32 @@ export default function Page() {
       if (event.tool === "agent_list_policies") {
         setMessages((prev) => [
           ...prev,
-          { id: crypto.randomUUID(), role: "assistant", content: { type: "policies", data: data as PolicyResult[] } },
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: { type: "policies", data: data as PolicyResult[] },
+          },
         ])
       } else if (event.tool === "agent_create_quote") {
         setMessages((prev) => [
           ...prev,
-          { id: crypto.randomUUID(), role: "assistant", content: { type: "quote", data: data as QuoteResult } },
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: { type: "quote", data: data as QuoteResult },
+          },
         ])
-      } else if (event.tool === "agent_confirm_payment" || event.tool === "agent_cancel_policy") {
+      } else if (
+        event.tool === "agent_confirm_payment" ||
+        event.tool === "agent_cancel_policy"
+      ) {
         setMessages((prev) => [
           ...prev,
-          { id: crypto.randomUUID(), role: "assistant", content: { type: "policy", data: data as PolicyResult } },
+          {
+            id: crypto.randomUUID(),
+            role: "assistant",
+            content: { type: "policy", data: data as PolicyResult },
+          },
         ])
       }
     }
@@ -255,7 +299,10 @@ export default function Page() {
           setMessages((prev) =>
             prev.map((m) =>
               m.id === assistantId && m.content.type === "text"
-                ? { ...m, content: { type: "text", text: m.content.text + token } }
+                ? {
+                    ...m,
+                    content: { type: "text", text: m.content.text + token },
+                  }
                 : m
             )
           ),
@@ -275,15 +322,22 @@ export default function Page() {
     setMessages((prev) =>
       prev.map((m) =>
         m.content.type === "quote" && m.content.data.quote_id === quoteId
-          ? { ...m, content: { type: "quote" as const, data: m.content.data, confirmed: true } }
+          ? {
+              ...m,
+              content: {
+                type: "quote" as const,
+                data: m.content.data,
+                confirmed: true,
+              },
+            }
           : m
       )
     )
     sendMessage("yes, please confirm my quote and create the policy")
   }
 
-  function handleCancelPolicy(policyId: string) {
-    sendMessage(`please cancel policy ${policyId}`)
+  function handleCancelPolicy(policyId: string, policyNumber?: string) {
+    sendMessage(`please cancel my policy ${policyNumber ?? policyId}`)
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -297,7 +351,14 @@ export default function Page() {
 
   return (
     <div className="flex h-svh flex-col">
-      <Header onLoginClick={() => { pendingMessage.current = null; setAuthOpen(true) }} onNewChat={messages.length > 0 ? startNewChat : undefined} onLogout={startNewChat} />
+      <Header
+        onLoginClick={() => {
+          pendingMessage.current = null
+          setAuthOpen(true)
+        }}
+        onNewChat={messages.length > 0 ? startNewChat : undefined}
+        onLogout={startNewChat}
+      />
       <AuthDialog
         open={authOpen}
         onOpenChange={setAuthOpen}
@@ -313,7 +374,7 @@ export default function Page() {
         <div className="flex-1 overflow-y-auto py-6">
           {messages.length === 0 ? (
             <div className="flex h-full items-center justify-center">
-              <p className="text-muted-foreground text-sm">
+              <p className="text-sm text-muted-foreground">
                 Ask anything about your insurance needs.
               </p>
             </div>
@@ -341,7 +402,10 @@ export default function Page() {
               ref={textareaRef}
               rows={1}
               value={input}
-              onChange={(e) => { setInput(e.target.value); autoResize() }}
+              onChange={(e) => {
+                setInput(e.target.value)
+                autoResize()
+              }}
               onKeyDown={onKeyDown}
               placeholder="Message InsurePlus..."
               disabled={streaming}

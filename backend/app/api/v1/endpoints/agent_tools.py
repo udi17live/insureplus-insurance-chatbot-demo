@@ -50,10 +50,10 @@ async def agent_create_quote(
     "/policies/{policy_id}/cancel",
     response_model=AgentPolicyOut,
     summary="Cancel a policy",
-    description="Cancels an active policy belonging to the user associated with session_id.",
+    description="Cancels an active policy. policy_id accepts either a UUID or a policy number (e.g. IP-XXXXXXXX).",
 )
 async def agent_cancel_policy(
-    policy_id: uuid.UUID,
+    policy_id: str,
     session_id: str,
     _: AgentAuth,
     db: DBSession,

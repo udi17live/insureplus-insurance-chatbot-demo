@@ -75,7 +75,7 @@ export function PolicyCard({
   onCancel,
 }: {
   policy: PolicyResult
-  onCancel?: (policyId: string) => Promise<void> | void
+  onCancel?: (policyId: string, policyNumber?: string) => Promise<void> | void
 }) {
   const [cancelling, setCancelling] = React.useState(false)
 
@@ -83,7 +83,7 @@ export function PolicyCard({
     if (!onCancel) return
     setCancelling(true)
     try {
-      await onCancel(policy.policy_id)
+      await onCancel(policy.policy_id, policy.policy_number)
     } finally {
       setCancelling(false)
     }
@@ -126,7 +126,7 @@ export function PoliciesCard({
   onCancel,
 }: {
   policies: PolicyResult[]
-  onCancel?: (policyId: string) => Promise<void> | void
+  onCancel?: (policyId: string, policyNumber?: string) => Promise<void> | void
 }) {
   if (policies.length === 0) {
     return (

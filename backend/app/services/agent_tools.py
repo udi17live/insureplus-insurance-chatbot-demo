@@ -100,9 +100,12 @@ class AgentToolsService:
             expires_at=quote.expires_at,
         )
 
-    async def cancel_policy(self, policy_id: uuid.UUID, session_id: uuid.UUID) -> AgentPolicyOut:
+    async def cancel_policy(self, policy_id: str, session_id: uuid.UUID) -> AgentPolicyOut:
         user_id = await self._resolve_user(session_id)
-        policy = await self.policy_repo.get_by_id(policy_id)
+        try:
+            policy = await self.policy_repo.get_by_id(uuid.UUID(policy_id))
+        except (ValueError, AttributeError):
+            policy = await self.policy_repo.get_by_policy_number(policy_id)
         if not policy or policy.user_id != user_id:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Policy not found")
         if policy.status != PolicyStatus.active:

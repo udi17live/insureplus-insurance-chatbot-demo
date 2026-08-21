@@ -1,7 +1,7 @@
 {
   "openapi": "3.1.0",
   "info": { "title": "Create Insurance Quote", "version": "1.0.0" },
-  "servers": [{ "url": "https://rs70p1pc-8000.asse.devtunnels.ms/api/v1" }],
+  "servers": [{ "url": "https://insure-plus-backend.victoriousplant-141de2b1.centralus.azurecontainerapps.io/api/v1" }],
   "paths": {
     "/agent/quotes": {
       "post": {

@@ -33,3 +33,6 @@ Thumbs.db
 .ruff_cache/
 htmlcov/
 .coverage
+
+# Scripts output
+scripts/output/
